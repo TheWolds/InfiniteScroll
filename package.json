@@ -2,7 +2,8 @@
   "name": "llorcs",
   "version": "1.0.0",
   "description": "This is an infinite scroll made for practice. You can use it, but it does not guarantee stability or performance",
-  "main": "src/index.js",
+  "main": "src/scroll.js",
+  "private": true,
   "scripts": {
     "start": "NODE_ENV=development webpack-dev-server --open  --post 4000 --compress",
     "build": "NODE_ENV=production webpack --progress"
@@ -10,6 +11,10 @@
   "engines": {
     "node": "10.14.2"
   },
+  "files": [
+    "dist"
+  ],
+  "homepage": "https://github.com/project42da/InfiniteScroll",
   "author": "project42da",
   "license": "WTFPL",
   "keywords": [

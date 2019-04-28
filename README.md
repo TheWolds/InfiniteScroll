@@ -1,38 +1,50 @@
-# 📜 ↩️
+# ♾ 📜
 
-> ⚠️ This is an infinite scroll *made for practice*. You can use it, but *it does not guarantee stability or performance*.
+⚠️ This is an infinite scroll *made for practice*. You can use it, but *it does not guarantee stability or performance*.
 
-## Install
+
+![dd](infi.gif)
+
+[example](https://project42da.github.io/InfiniteScroll/examples)
+
+<!-- ## Install
 
 ```
 npm install llorcs
-```
+``` -->
 
-## Initialize
+## Usage
 
 ```js
-const scroll = new InfiniteScroll({
-    component: '#component',
-    list: '#list',
-    item: '.item'
-});
-scroll.setScroll({
+InfiniteScroll.setScroll({
+    componentSelector: '#component',
+    parentSelector: '#list',
+    rowSelector: '.item'
     rowHeight,
     templateHTML,
     dataList,
 });
 
 // or
-InfiniteScroll.setScroll({
-    component: '#component',
-    list: '#list',
-    item: '.item'
-},{
+new InfiniteScroll().setScroll({
+    componentSelector: '#component',
+    parentSelector: '#list',
+    rowSelector: '.item'
     rowHeight,
     templateHTML,
     dataList,
 });
 ```
+
+| name | type | description |
+|---|---|---|
+| `componentSelector` | string |The selector that specifies the element around the scroll with a fixed height|
+| `parentSelector` | string | The selector that specifies scrolling with dynamic height |
+| `rowSelector` | string | The selector that specifies the elements in the scroll |
+| `rowHeight` | number | Height of row |
+| `templateHTML` | function | A function that returns a template string. It accepts `rowHeight`,` index`, and `data` as parameters. |
+| `dataList` | array | Data for scroll |
+
 
 ## 🔑 License
 

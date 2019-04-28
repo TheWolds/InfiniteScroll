@@ -1,19 +1,15 @@
 import { qs, htmlStringToFragment } from './utils';
 
 const InfiniteScroll = class {
-    static setScroll = (target, obj) => {
-        return new InfiniteScroll(target).setScroll(obj);
-    }
-
-    constructor(target) {
-        const { component, parent, itemSelector } = target;
-        this.component = qs(component);
-        this.parent = qs(parent);
-        this.itemSelector = itemSelector;
+    static setScroll = (obj) => {
+        return new InfiniteScroll().setScroll(obj);
     }
 
     setScroll = obj => {
-        const { rowHeight, templateHTML, dataList = [] } = obj;
+        const { componentSelector, parentSelector, rowSelector, rowHeight, templateHTML, dataList = [] } = obj;
+        this.component = qs(componentSelector);
+        this.parent = qs(parentSelector);
+        this.rowSelector = rowSelector;
         this.isScrollDown = true;
         this.lastScrollTop = 0;
         this.lastRowIndex = -1;
@@ -29,8 +25,8 @@ const InfiniteScroll = class {
         let _preparedRowCount = Math.max(this.visibleRowCount, 20);
         this.preparedRowCount = _preparedRowCount + _preparedRowCount % 2;
 
-        component.removeEventListener("scroll", this.handleScrollEvent);
-        component.addEventListener("scroll", this.handleScrollEvent);
+        this.component.removeEventListener("scroll", this.handleScrollEvent);
+        this.component.addEventListener("scroll", this.handleScrollEvent);
         this.handleScroll();
     }
 
@@ -104,8 +100,7 @@ const InfiniteScroll = class {
 
         let _lastRowIndex = this.cachedItems[this.cachedItems.length - 1].dataset.index;
         if (_lastRowIndex > this.lastRowIndex) {
-            console.log(_lastRowIndex, this.lastRowIndex);
-            this.lastRowIndex = _lastRowIndex
+            this.lastRowIndex = _lastRowIndex;
             this.parent.style.height = this.lastRowIndex * this.cachedItems[this.cachedItems.length - 1].offsetHeight + 'px';
         }
     }
@@ -123,12 +118,12 @@ const InfiniteScroll = class {
             this.parent.insertBefore(fragment, this.parent.children[0]);
         }
 
-        this.cachedItems = this.parent.querySelectorAll(this.itemSelector);
+        this.cachedItems = this.parent.querySelectorAll(this.rowSelector);
         this.update();
     }
 
     update = () => {
-        let extraChildCount;
+        let uselessRowCount;
         let invisibleRowCount;
         let invisibleRowHeight;
 
@@ -137,10 +132,10 @@ const InfiniteScroll = class {
             invisibleRowHeight = (firstElem.getBoundingClientRect().top - this.component.getBoundingClientRect().top);
             if (invisibleRowHeight < 0) {
                 invisibleRowCount = Math.floor(Math.abs(invisibleRowHeight) / this.rowHeight);
-                extraChildCount = (invisibleRowCount - this.preparedRowCount);
-                if (extraChildCount > 0) {
-                    this.remove(0, extraChildCount);
-                    this.cachedItems = this.parent.querySelectorAll(this.itemSelector);
+                uselessRowCount = (invisibleRowCount - this.preparedRowCount);
+                if (uselessRowCount > 0) {
+                    this.remove(0, uselessRowCount);
+                    this.cachedItems = this.parent.querySelectorAll(this.rowSelector);
                 }
             }
         } else {
@@ -148,10 +143,10 @@ const InfiniteScroll = class {
             invisibleRowHeight = (lastElem.getBoundingClientRect().bottom - this.component.getBoundingClientRect().bottom);
             if (invisibleRowHeight > 0) {
                 invisibleRowCount = Math.floor(invisibleRowHeight / this.rowHeight);
-                extraChildCount = invisibleRowCount - this.preparedRowCount;
-                if (extraChildCount > 0) {
-                    this.remove((this.cachedItems.length-1) - extraChildCount, this.cachedItems.length-1);
-                    this.cachedItems = this.parent.querySelectorAll(this.itemSelector);
+                uselessRowCount = invisibleRowCount - this.preparedRowCount;
+                if (uselessRowCount > 0) {
+                    this.remove((this.cachedItems.length-1) - uselessRowCount, this.cachedItems.length-1);
+                    this.cachedItems = this.parent.querySelectorAll(this.rowSelector);
                 }
             }
         }
