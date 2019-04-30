@@ -4,7 +4,7 @@ const webpack = require('webpack');
 
 module.exports = {
     entry: {
-        app: path.resolve(__dirname, '../src/index.js')
+        app: ['@babel/polyfill', path.resolve(__dirname, '../src/index.js')]
     },
     devServer: {
         contentBase: path.resolve(__dirname, '../examples'),

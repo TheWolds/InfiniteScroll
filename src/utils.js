@@ -23,3 +23,13 @@ export const htmlStringToFragment = html => {
     if (typeof html !== "string") err("html 문자열이 아닙니다.");
     return document.createRange().createContextualFragment(html);
 }
+
+export function debounce(fn, wait = 100) {
+    let timeout;
+    return function(...args) {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => {
+            fn.apply(this, args);
+        }, wait);
+    };
+}

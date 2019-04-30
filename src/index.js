@@ -3,26 +3,32 @@ import './style.scss';
 
 const itemHTML = (rowHeight, index, data) => {
     let top = index * rowHeight;
+    console.log(!data && data);
     return `<li class="item" style="position:absolute; top:${top}px;" data-index=${index}>
-        ${data.email}
+        ${data.name}
     </li>`
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-    fetch("https://jsonplaceholder.typicode.com/comments").then(res => {
+    fetch(`https://swapi.co/api/people/?page=1`).then(res => {
         if (res.status === 200) {
             return res.json();
         } else {
             throw new Error("Error");
         }
     }).then(data => {
+        console.log(data);
         InfiniteScroll.setScroll({
             componentSelector: '#component',
             parentSelector: '#list',
             rowSelector: '.item',
-            dataList: data,
+            dataList: data.results,
             rowHeight: 50,
-            templateHTML: itemHTML
+            templateHTML: itemHTML,
+            options:{
+                query: 1,
+                isPending: false
+            }
         });
     });
 });

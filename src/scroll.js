@@ -1,4 +1,4 @@
-import { qs, htmlStringToFragment } from './utils';
+import { qs, htmlStringToFragment, debounce } from './utils';
 
 const InfiniteScroll = class {
     static setScroll = (obj) => {
@@ -6,7 +6,7 @@ const InfiniteScroll = class {
     }
 
     setScroll = obj => {
-        const { componentSelector, parentSelector, rowSelector, rowHeight, templateHTML, dataList = [] } = obj;
+        const { componentSelector, parentSelector, rowSelector, rowHeight, templateHTML, dataList = [], options } = obj;
         this.component = qs(componentSelector);
         this.parent = qs(parentSelector);
         this.rowSelector = rowSelector;
@@ -17,6 +17,7 @@ const InfiniteScroll = class {
         this.rowHeight = rowHeight;
         this.templateHTML = templateHTML;
         this.dataList = dataList;
+        this.options = options;
 
         this.parent.style.position = "relative";
         this.component.scrollTop = 0;
@@ -25,8 +26,8 @@ const InfiniteScroll = class {
         let _preparedRowCount = Math.max(this.visibleRowCount, 20);
         this.preparedRowCount = _preparedRowCount + _preparedRowCount % 2;
 
-        this.component.removeEventListener("scroll", this.handleScrollEvent);
-        this.component.addEventListener("scroll", this.handleScrollEvent);
+        this.component.removeEventListener("scroll", debounce(this.handleScrollEvent, 100));
+        this.component.addEventListener("scroll", debounce(this.handleScrollEvent, 100));
         this.handleScroll();
     }
 
@@ -88,12 +89,31 @@ const InfiniteScroll = class {
         this.render(startIndex, endIndex);
     }
 
+    getData = async (query) => {
+        const response = await fetch(`https://swapi.co/api/people/?page=${query + 1}`);
+        this.options.query = query + 1;
+        const data = await response.json();
+        return data.results;
+    }
+
     render = (startIndex, endIndex) => {
+        const { query } = this.options;
         const dataLength = this.dataList.length;
         if (startIndex < 0) startIndex = 0;
-        if (endIndex > dataLength) endIndex = dataLength;
+        if (endIndex > dataLength){
+            if(this.getData && !this.options.isPending){
+                this.options.isPending = true;
+                this.getData(query).then(data => {
+                    this.dataList = [...this.dataList, ...data];
+                    window.ddddataList = this.dataList;
+                    this.render(startIndex, endIndex);
+                    this.options.isPending = false;
+                    return;
+                });
+            }
+            endIndex = dataLength;
+        }
         if (startIndex >= dataLength || dataLength === 0 || endIndex <= 0) return;
-
         let _html = this.getListHTML(startIndex, endIndex - startIndex);
         let _fragement = htmlStringToFragment(_html);
         this.append(_fragement);
@@ -154,7 +174,6 @@ const InfiniteScroll = class {
 
     // utils로 빼기
     getListHTML = (startIndex, length) => {
-        console.log(startIndex)
         let html = '';
         for (let i = startIndex; i < startIndex + length; i++) {
             html += this.templateHTML(this.rowHeight, i, this.dataList[i]);
