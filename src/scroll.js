@@ -10,7 +10,7 @@ const InfiniteScroll = class {
         this.component = qs(componentSelector);
         this.parent = qs(parentSelector);
         this.rowSelector = rowSelector;
-        this.isScrollDown = true;
+        // this.isScrollDown = true;
         this.lastScrollTop = 0;
         this.lastRowIndex = -1;
         this.cachedItems = [];
@@ -26,8 +26,8 @@ const InfiniteScroll = class {
         let _preparedRowCount = Math.max(this.visibleRowCount, 20);
         this.preparedRowCount = _preparedRowCount + _preparedRowCount % 2;
 
-        this.component.removeEventListener("scroll", debounce(this.handleScrollEvent, 100));
-        this.component.addEventListener("scroll", debounce(this.handleScrollEvent, 100));
+        this.component.removeEventListener("scroll", this.handleScrollEvent);
+        this.component.addEventListener("scroll", this.handleScrollEvent);
         this.handleScroll();
     }
 
@@ -40,9 +40,9 @@ const InfiniteScroll = class {
     _handleScrollEvent = () => {
         let scrollFunc;
         const scrollTop = this.component.scrollTop;
-        this.isScrollDown = (scrollTop > this.lastScrollTop);
+        const isScrollDown = (scrollTop > this.lastScrollTop);
 
-        if (this.isScrollDown) {
+        if (isScrollDown) {
             scrollFunc = this.handleScrollDown;
         } else {
             scrollFunc = this.handleScrollUp;
@@ -73,20 +73,20 @@ const InfiniteScroll = class {
         const firstChildRect = firstChild.getBoundingClientRect();
         const componentRect = this.component.getBoundingClientRect();
         if (firstChildRect.top > componentRect.bottom) {
-            this.handleScroll();
+            this.handleScroll(false);
         } else if (firstChildRect.top > componentRect.top - (5 * this.rowHeight)) {
             const endCount = parseInt(firstChild.dataset.index, 10);
             const startCount = endCount - this.preparedRowCount;
-            this.render(startCount, endCount);
+            this.render(startCount, endCount, false);
         }
     }
 
-    handleScroll = () => {
+    handleScroll = (isScrollDown = true) => {
         const currentStartIndex = Math.floor((this.component.scrollTop) / this.rowHeight);
         const startIndex = currentStartIndex - this.preparedRowCount / 2;
         const endIndex = currentStartIndex + this.visibleRowCount + this.preparedRowCount / 2;
 
-        this.render(startIndex, endIndex);
+        this.render(startIndex, endIndex, isScrollDown);
     }
 
     getData = async (query) => {
@@ -96,7 +96,7 @@ const InfiniteScroll = class {
         return data.results;
     }
 
-    render = (startIndex, endIndex) => {
+    render = (startIndex, endIndex, isScrollDown) => {
         const { query } = this.options;
         const dataLength = this.dataList.length;
         if (startIndex < 0) startIndex = 0;
@@ -106,7 +106,7 @@ const InfiniteScroll = class {
                 this.getData(query).then(data => {
                     this.dataList = [...this.dataList, ...data];
                     window.ddddataList = this.dataList;
-                    this.render(startIndex, endIndex);
+                    this.render(endIndex, ddddataList.length, isScrollDown);
                     this.options.isPending = false;
                     return;
                 });
@@ -116,7 +116,7 @@ const InfiniteScroll = class {
         if (startIndex >= dataLength || dataLength === 0 || endIndex <= 0) return;
         let _html = this.getListHTML(startIndex, endIndex - startIndex);
         let _fragement = htmlStringToFragment(_html);
-        this.append(_fragement);
+        this.append(_fragement, isScrollDown);
 
         let _lastRowIndex = this.cachedItems[this.cachedItems.length - 1].dataset.index;
         if (_lastRowIndex > this.lastRowIndex) {
@@ -131,23 +131,25 @@ const InfiniteScroll = class {
         }
     }
 
-    append = fragment => {
-        if (this.isScrollDown) {
+    append = (fragment, isScrollDown) => {
+        if (isScrollDown) {
+            console.log("내려감");
             this.parent.appendChild(fragment);
         } else {
+            console.log("올라감");
             this.parent.insertBefore(fragment, this.parent.children[0]);
         }
 
         this.cachedItems = this.parent.querySelectorAll(this.rowSelector);
-        this.update();
+        this.update(isScrollDown);
     }
 
-    update = () => {
+    update = (isScrollDown) => {
         let uselessRowCount;
         let invisibleRowCount;
         let invisibleRowHeight;
 
-        if (this.isScrollDown) {
+        if (isScrollDown) {
             let firstElem = this.cachedItems[0];
             invisibleRowHeight = (firstElem.getBoundingClientRect().top - this.component.getBoundingClientRect().top);
             if (invisibleRowHeight < 0) {

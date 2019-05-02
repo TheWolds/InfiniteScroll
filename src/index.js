@@ -3,7 +3,6 @@ import './style.scss';
 
 const itemHTML = (rowHeight, index, data) => {
     let top = index * rowHeight;
-    console.log(!data && data);
     return `<li class="item" style="position:absolute; top:${top}px;" data-index=${index}>
         ${data.name}
     </li>`
