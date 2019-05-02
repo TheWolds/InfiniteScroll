@@ -118,10 +118,10 @@ const InfiniteScroll = class {
         let _fragement = htmlStringToFragment(_html);
         this.append(_fragement, isScrollDown);
 
-        let _lastRowIndex = this.cachedItems[this.cachedItems.length - 1].dataset.index;
+        let _lastRowIndex = parseInt(this.cachedItems[this.cachedItems.length - 1].dataset.index, 10);
         if (_lastRowIndex > this.lastRowIndex) {
             this.lastRowIndex = _lastRowIndex;
-            this.parent.style.height = this.lastRowIndex * this.cachedItems[this.cachedItems.length - 1].offsetHeight + 'px';
+            this.parent.style.height = this.lastRowIndex * this.rowHeight + 'px';
         }
     }
 
