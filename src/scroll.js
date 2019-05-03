@@ -1,22 +1,26 @@
-import { qs, htmlStringToFragment } from './utils';
+import { qs, htmlStringToFragment, /* debounce */ } from './utils';
 
 const InfiniteScroll = class {
     static setScroll = (obj) => {
         return new InfiniteScroll().setScroll(obj);
     }
 
+    static defaultProps = {
+        fetchData: false
+    }
+
     setScroll = obj => {
-        const { componentSelector, parentSelector, rowSelector, rowHeight, templateHTML, dataList = [] } = obj;
+        const { componentSelector, parentSelector, rowSelector, rowHeight, templateHTML, dataList = [], options } = obj;
         this.component = qs(componentSelector);
         this.parent = qs(parentSelector);
         this.rowSelector = rowSelector;
-        this.isScrollDown = true;
         this.lastScrollTop = 0;
         this.lastRowIndex = -1;
         this.cachedItems = [];
         this.rowHeight = rowHeight;
         this.templateHTML = templateHTML;
         this.dataList = dataList;
+        this.options = options;
 
         this.parent.style.position = "relative";
         this.component.scrollTop = 0;
@@ -28,6 +32,13 @@ const InfiniteScroll = class {
         this.component.removeEventListener("scroll", this.handleScrollEvent);
         this.component.addEventListener("scroll", this.handleScrollEvent);
         this.handleScroll();
+        return this;
+    }
+
+    on = (obj = defaultProps) => {
+        if(obj.fetchData){
+            this.fetchData = obj.fetchData.bind(this);
+        }
     }
 
     handleScrollEvent = () => {
@@ -39,9 +50,9 @@ const InfiniteScroll = class {
     _handleScrollEvent = () => {
         let scrollFunc;
         const scrollTop = this.component.scrollTop;
-        this.isScrollDown = (scrollTop > this.lastScrollTop);
+        const isScrollDown = (scrollTop > this.lastScrollTop);
 
-        if (this.isScrollDown) {
+        if (isScrollDown) {
             scrollFunc = this.handleScrollDown;
         } else {
             scrollFunc = this.handleScrollUp;
@@ -72,36 +83,55 @@ const InfiniteScroll = class {
         const firstChildRect = firstChild.getBoundingClientRect();
         const componentRect = this.component.getBoundingClientRect();
         if (firstChildRect.top > componentRect.bottom) {
-            this.handleScroll();
+            this.handleScroll(false);
         } else if (firstChildRect.top > componentRect.top - (5 * this.rowHeight)) {
             const endCount = parseInt(firstChild.dataset.index, 10);
             const startCount = endCount - this.preparedRowCount;
-            this.render(startCount, endCount);
+            this.render(startCount, endCount, false);
         }
     }
 
-    handleScroll = () => {
+    handleScroll = (isScrollDown = true) => {
         const currentStartIndex = Math.floor((this.component.scrollTop) / this.rowHeight);
         const startIndex = currentStartIndex - this.preparedRowCount / 2;
         const endIndex = currentStartIndex + this.visibleRowCount + this.preparedRowCount / 2;
 
-        this.render(startIndex, endIndex);
+        this.render(startIndex, endIndex, isScrollDown);
     }
 
-    render = (startIndex, endIndex) => {
+    render = (startIndex, endIndex, isScrollDown) => {
+        const { query } = this.options;
         const dataLength = this.dataList.length;
         if (startIndex < 0) startIndex = 0;
-        if (endIndex > dataLength) endIndex = dataLength;
+        if (endIndex > dataLength){
+            if(this.fetchData && !this.options.isPending){
+                this.options.isPending = true;
+                this.fetchData(query).then(data => {
+                    this.dataList = [...this.dataList, ...data];
+                    this.render(endIndex, this.dataList.length, isScrollDown);
+                    this.options.isPending = false;
+                    return;
+                });
+            }
+            endIndex = dataLength;
+        }
+        
+        // pre-append
+
+        //
+
+        // append 작업
         if (startIndex >= dataLength || dataLength === 0 || endIndex <= 0) return;
-
         let _html = this.getListHTML(startIndex, endIndex - startIndex);
-        let _fragement = htmlStringToFragment(_html);
-        this.append(_fragement);
+        let _fragement = htmlStringToFragment(_html);        
+        this.append(_fragement, isScrollDown);
+        // append 끝
 
-        let _lastRowIndex = this.cachedItems[this.cachedItems.length - 1].dataset.index;
+        // append이후
+        let _lastRowIndex = parseInt(this.cachedItems[this.cachedItems.length - 1].dataset.index, 10);
         if (_lastRowIndex > this.lastRowIndex) {
             this.lastRowIndex = _lastRowIndex;
-            this.parent.style.height = this.lastRowIndex * this.cachedItems[this.cachedItems.length - 1].offsetHeight + 'px';
+            this.parent.style.height = this.lastRowIndex * this.rowHeight + 'px';
         }
     }
 
@@ -111,23 +141,25 @@ const InfiniteScroll = class {
         }
     }
 
-    append = fragment => {
-        if (this.isScrollDown) {
+    append = (fragment, isScrollDown) => {
+        if (isScrollDown) {
+            console.log("내려감");
             this.parent.appendChild(fragment);
         } else {
+            console.log("올라감");
             this.parent.insertBefore(fragment, this.parent.children[0]);
         }
 
         this.cachedItems = this.parent.querySelectorAll(this.rowSelector);
-        this.update();
+        this.update(isScrollDown);
     }
 
-    update = () => {
+    update = (isScrollDown) => {
         let uselessRowCount;
         let invisibleRowCount;
         let invisibleRowHeight;
 
-        if (this.isScrollDown) {
+        if (isScrollDown) {
             let firstElem = this.cachedItems[0];
             invisibleRowHeight = (firstElem.getBoundingClientRect().top - this.component.getBoundingClientRect().top);
             if (invisibleRowHeight < 0) {
@@ -154,7 +186,6 @@ const InfiniteScroll = class {
 
     // utils로 빼기
     getListHTML = (startIndex, length) => {
-        console.log(startIndex)
         let html = '';
         for (let i = startIndex; i < startIndex + length; i++) {
             html += this.templateHTML(this.rowHeight, i, this.dataList[i]);
