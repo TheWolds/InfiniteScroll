@@ -8,16 +8,23 @@ const itemHTML = (rowHeight, index, data) => {
     </li>`
 }
 
+async function fetchData(query) {
+    const response = await fetch(`https://swapi.co/api/people/?page=${query + 1}`);
+    this.options.query = query + 1;
+    const data = await response.json();
+    return data.results;
+}
+
 document.addEventListener("DOMContentLoaded", () => {
     fetch(`https://swapi.co/api/people/?page=1`).then(res => {
+    // fetch(`https://jsonplaceholder.typicode.com/comments`).then(res => {
         if (res.status === 200) {
             return res.json();
         } else {
             throw new Error("Error");
         }
     }).then(data => {
-        console.log(data);
-        InfiniteScroll.setScroll({
+        const scroll = InfiniteScroll.setScroll({
             componentSelector: '#component',
             parentSelector: '#list',
             rowSelector: '.item',
@@ -28,6 +35,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 query: 1,
                 isPending: false
             }
+        });
+
+        scroll.on({
+            fetchData
         });
     });
 });

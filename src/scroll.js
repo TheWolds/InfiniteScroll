@@ -1,8 +1,12 @@
-import { qs, htmlStringToFragment, debounce } from './utils';
+import { qs, htmlStringToFragment, /* debounce */ } from './utils';
 
 const InfiniteScroll = class {
     static setScroll = (obj) => {
         return new InfiniteScroll().setScroll(obj);
+    }
+
+    static defaultProps = {
+        fetchData: false
     }
 
     setScroll = obj => {
@@ -10,7 +14,6 @@ const InfiniteScroll = class {
         this.component = qs(componentSelector);
         this.parent = qs(parentSelector);
         this.rowSelector = rowSelector;
-        // this.isScrollDown = true;
         this.lastScrollTop = 0;
         this.lastRowIndex = -1;
         this.cachedItems = [];
@@ -29,6 +32,13 @@ const InfiniteScroll = class {
         this.component.removeEventListener("scroll", this.handleScrollEvent);
         this.component.addEventListener("scroll", this.handleScrollEvent);
         this.handleScroll();
+        return this;
+    }
+
+    on = (obj = defaultProps) => {
+        if(obj.fetchData){
+            this.fetchData = obj.fetchData.bind(this);
+        }
     }
 
     handleScrollEvent = () => {
@@ -89,35 +99,35 @@ const InfiniteScroll = class {
         this.render(startIndex, endIndex, isScrollDown);
     }
 
-    getData = async (query) => {
-        const response = await fetch(`https://swapi.co/api/people/?page=${query + 1}`);
-        this.options.query = query + 1;
-        const data = await response.json();
-        return data.results;
-    }
-
     render = (startIndex, endIndex, isScrollDown) => {
         const { query } = this.options;
         const dataLength = this.dataList.length;
         if (startIndex < 0) startIndex = 0;
         if (endIndex > dataLength){
-            if(this.getData && !this.options.isPending){
+            if(this.fetchData && !this.options.isPending){
                 this.options.isPending = true;
-                this.getData(query).then(data => {
+                this.fetchData(query).then(data => {
                     this.dataList = [...this.dataList, ...data];
-                    window.ddddataList = this.dataList;
-                    this.render(endIndex, ddddataList.length, isScrollDown);
+                    this.render(endIndex, this.dataList.length, isScrollDown);
                     this.options.isPending = false;
                     return;
                 });
             }
             endIndex = dataLength;
         }
+        
+        // pre-append
+
+        //
+
+        // append 작업
         if (startIndex >= dataLength || dataLength === 0 || endIndex <= 0) return;
         let _html = this.getListHTML(startIndex, endIndex - startIndex);
-        let _fragement = htmlStringToFragment(_html);
+        let _fragement = htmlStringToFragment(_html);        
         this.append(_fragement, isScrollDown);
+        // append 끝
 
+        // append이후
         let _lastRowIndex = parseInt(this.cachedItems[this.cachedItems.length - 1].dataset.index, 10);
         if (_lastRowIndex > this.lastRowIndex) {
             this.lastRowIndex = _lastRowIndex;
