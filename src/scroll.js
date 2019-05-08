@@ -1,4 +1,4 @@
-import {qs, htmlStringToFragment /* debounce */} from './utils';
+import {qs, htmlStringToFragment} from './utils';
 
 const InfiniteScroll = class {
   static setScroll = obj => {
@@ -32,8 +32,8 @@ const InfiniteScroll = class {
 
     this.parent.style.position = 'relative';
     this.component.scrollTop = 0;
-    this.visibleRowCount = Math.ceil(this.component.clientHeight / this.rowHeight);
 
+    this.visibleRowCount = Math.ceil(this.component.clientHeight / this.rowHeight);
     let _preparedRowCount = Math.max(this.visibleRowCount, 20);
     this.preparedRowCount = _preparedRowCount + (_preparedRowCount % 2);
 
@@ -151,18 +151,11 @@ const InfiniteScroll = class {
       endIndex = dataLength;
     }
 
-    // pre-append
-
-    //
-
-    // append 작업
     if (startIndex >= dataLength || dataLength === 0 || endIndex <= 0) return;
     let _html = this.getListHTML(startIndex, endIndex - startIndex);
     let _fragement = htmlStringToFragment(_html);
     this.append(_fragement, isScrollDown);
-    // append 끝
 
-    // append이후
     let _lastRowIndex = parseInt(this.cachedItems[this.cachedItems.length - 1].dataset.index, 10);
     if (_lastRowIndex > this.lastRowIndex) {
       this.lastRowIndex = _lastRowIndex;
