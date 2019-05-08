@@ -1,23 +1,34 @@
 body,
 div,
 ul,
-li{
-    margin: 0;
-    padding: 0;
+li {
+  margin: 0;
+  padding: 0;
 }
 
-#component{
-    height : 100vh;
-    overflow : auto;
+#component {
+  height: 100vh;
+  overflow: auto;
 }
 
-#list-body{
-    margin: 0;
+#list-body {
+  margin: 0;
 }
 
-.item{
-    line-height: 49px;
-    width: calc(100% - 10px);
-    padding-left: 10px;
-    border-bottom : solid 1px #ddd;
+.item {
+  line-height: 49px;
+  width: calc(100% - 10px);
+  padding-left: 10px;
+  border-bottom: solid 1px #ddd;
+}
+
+#loading {
+  position: absolute;
+  bottom: 0px;
+  left: 0;
+  right: 0;
+  transform: translateY(50px);
+  line-height: 50px;
+  background-color: #eee;
+  text-align: center;
 }

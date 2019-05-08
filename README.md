@@ -16,7 +16,7 @@ npm install llorcs
 ## Usage
 
 ```js
-InfiniteScroll.setScroll({
+const scroll = InfiniteScroll.setScroll({
     componentSelector: '#component',
     parentSelector: '#list',
     rowSelector: '.item'
@@ -26,7 +26,7 @@ InfiniteScroll.setScroll({
 });
 
 // or
-new InfiniteScroll().setScroll({
+const scroll = new InfiniteScroll().setScroll({
     componentSelector: '#component',
     parentSelector: '#list',
     rowSelector: '.item'
@@ -34,7 +34,14 @@ new InfiniteScroll().setScroll({
     templateHTML,
     dataList,
 });
+
+// run
+scroll.on();
 ```
+
+### `setScroll(object)`
+
+The method to initialize the scroll.
 
 | name | type | description |
 |---|---|---|
@@ -45,6 +52,42 @@ new InfiniteScroll().setScroll({
 | `templateHTML` | function | A function that returns a template string. It accepts `rowHeight`,` index`, and `data` as parameters. |
 | `dataList` | array | Data for scroll |
 
+
+### `.on(object)`
+
+The method to activates the scroll.
+
+| name | type | description |
+|---|---|---|
+|`fetchData`| Promise|boolean | Data is loaded asynchronously at the time of scrolling |
+|`loading`| HTMLElement | Selector to show during loading (eg loading indicator) |
+|`isPending`| boolean | Flags for checking whether data is being loaded. |
+|`options`| object | `fetchData` object (eg. query) |
+
+
+
+### Fetch API
+
+```js
+async function fetchData(options) {
+  const currentQuery = options.query;
+  const response = await fetch(`https://swapi.co/api/people/?page=${currentQuery + 1}`);
+  if (!response.ok) {
+    throw Error('더 불러올 데이터가 없습니다.');
+  }
+  options.query = currentQuery + 1;
+  const data = await response.json();
+  return data.results;
+}
+
+scroll.on({
+  fetchData,
+  loading: document.getElementById('loading'),
+  options: {
+    query: 1
+  }
+});
+```
 
 ## 🔑 License
 

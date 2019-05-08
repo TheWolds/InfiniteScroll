@@ -8,9 +8,13 @@ const itemHTML = (rowHeight, index, data) => {
     </li>`;
 };
 
-async function fetchData(query) {
-  const response = await fetch(`https://swapi.co/api/people/?page=${query + 1}`);
-  this.options.query = query + 1;
+async function fetchData(options) {
+  const currentQuery = options.query;
+  const response = await fetch(`https://swapi.co/api/people/?page=${currentQuery + 1}`);
+  if (!response.ok) {
+    throw Error('더 불러올 데이터가 없습니다.');
+  }
+  options.query = currentQuery + 1;
   const data = await response.json();
   return data.results;
 }
@@ -31,16 +35,17 @@ document.addEventListener('DOMContentLoaded', () => {
         parentSelector: '#list',
         rowSelector: '.item',
         dataList: data.results,
+        // dataList: data,
         rowHeight: 50,
-        templateHTML: itemHTML,
-        options: {
-          query: 1,
-          isPending: false
-        }
+        templateHTML: itemHTML
       });
 
       scroll.on({
-        fetchData: fetchData
+        fetchData,
+        loading: document.getElementById('loading'),
+        options: {
+          query: 1
+        }
       });
     });
 });
