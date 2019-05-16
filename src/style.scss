@@ -22,11 +22,12 @@ li {
   border-bottom: solid 1px #ddd;
 }
 
+#loading[aria-hidden='true'] {
+  visibility: hidden;
+  transform: translateY(0px);
+}
+
 #loading {
-  position: absolute;
-  bottom: 0px;
-  left: 0;
-  right: 0;
   transform: translateY(50px);
   line-height: 50px;
   background-color: #eee;

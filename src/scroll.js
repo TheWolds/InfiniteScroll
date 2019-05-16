@@ -23,6 +23,7 @@ const InfiniteScroll = class {
     this.component = qs(componentSelector);
     this.parent = qs(parentSelector);
     this.rowSelector = rowSelector;
+    this.componentBCR = this.component.getBoundingClientRect();
     this.lastScrollTop = 0;
     this.lastRowIndex = -1;
     this.cachedItems = [];
@@ -89,35 +90,38 @@ const InfiniteScroll = class {
   handleScrollDown = () => {
     const lastChild = this.cachedItems[this.cachedItems.length - 1];
     const lastChildRect = lastChild.getBoundingClientRect();
-    const componentRect = this.component.getBoundingClientRect();
 
     if (lastChildRect.bottom < 0) {
       const lastIndex = parseInt(lastChild.dataset.index, 10);
       if (lastIndex + 1 < this.dataList.length) {
         this.handleScroll();
       }
-    } else if (lastChildRect.bottom < componentRect.bottom + 5 * this.rowHeight) {
+    } else if (lastChildRect.bottom < this.componentBCR.bottom + 5 * this.rowHeight) {
       const startIndex = parseInt(lastChild.dataset.index, 10) + 1;
       const endIndex = startIndex + this.preparedRowCount;
-      this.render(startIndex, endIndex, true);
+      requestAnimationFrame(_ => {
+        this.render(startIndex, endIndex, true);
+      });
     }
   };
 
   handleScrollUp = () => {
     const firstChild = this.cachedItems[0];
     const firstChildRect = firstChild.getBoundingClientRect();
-    const componentRect = this.component.getBoundingClientRect();
-    if (firstChildRect.top > componentRect.bottom) {
+    if (firstChildRect.top > this.componentBCR.bottom) {
       this.handleScroll(false);
-    } else if (firstChildRect.top > componentRect.top - 5 * this.rowHeight) {
+    } else if (firstChildRect.top > this.componentBCR.top - 5 * this.rowHeight) {
       const endCount = parseInt(firstChild.dataset.index, 10);
       const startCount = endCount - this.preparedRowCount;
-      this.render(startCount, endCount, false);
+      requestAnimationFrame(_ => {
+        this.render(startCount, endCount, false);
+      });
     }
   };
 
   handleLoading = isloading => {
-    this.loading.style.display = isloading ? 'block' : 'none';
+    const prefix = !isloading ? 'set' : 'remove';
+    this.loading[prefix + 'Attribute']('aria-hidden', 'true');
   };
 
   handleScroll = (isScrollDown = true) => {
@@ -125,7 +129,9 @@ const InfiniteScroll = class {
     const startIndex = currentStartIndex - this.preparedRowCount / 2;
     const endIndex = currentStartIndex + this.visibleRowCount + this.preparedRowCount / 2;
 
-    this.render(startIndex, endIndex, isScrollDown);
+    requestAnimationFrame(_ => {
+      this.render(startIndex, endIndex, isScrollDown);
+    });
   };
 
   render = (startIndex, endIndex, isScrollDown) => {
@@ -159,7 +165,10 @@ const InfiniteScroll = class {
     let _lastRowIndex = parseInt(this.cachedItems[this.cachedItems.length - 1].dataset.index, 10);
     if (_lastRowIndex > this.lastRowIndex) {
       this.lastRowIndex = _lastRowIndex;
-      this.parent.style.height = this.lastRowIndex * this.rowHeight + 'px';
+
+      requestAnimationFrame(_ => {
+        this.parent.style.height = this.lastRowIndex * this.rowHeight + 'px';
+      });
     }
   };
 
@@ -189,32 +198,33 @@ const InfiniteScroll = class {
 
     if (isScrollDown) {
       let firstElem = this.cachedItems[0];
-      invisibleRowHeight =
-        firstElem.getBoundingClientRect().top - this.component.getBoundingClientRect().top;
+      invisibleRowHeight = firstElem.getBoundingClientRect().top - this.componentBCR.top;
       if (invisibleRowHeight < 0) {
         invisibleRowCount = Math.floor(Math.abs(invisibleRowHeight) / this.rowHeight);
         uselessRowCount = invisibleRowCount - this.preparedRowCount;
         if (uselessRowCount > 0) {
-          this.remove(0, uselessRowCount);
-          this.cachedItems = this.parent.querySelectorAll(this.rowSelector);
+          requestAnimationFrame(_ => {
+            this.remove(0, uselessRowCount);
+            this.cachedItems = this.parent.querySelectorAll(this.rowSelector);
+          });
         }
       }
     } else {
       let lastElem = this.cachedItems[this.cachedItems.length - 1];
-      invisibleRowHeight =
-        lastElem.getBoundingClientRect().bottom - this.component.getBoundingClientRect().bottom;
+      invisibleRowHeight = lastElem.getBoundingClientRect().bottom - this.componentBCR.bottom;
       if (invisibleRowHeight > 0) {
         invisibleRowCount = Math.floor(invisibleRowHeight / this.rowHeight);
         uselessRowCount = invisibleRowCount - this.preparedRowCount;
         if (uselessRowCount > 0) {
-          this.remove(this.cachedItems.length - 1 - uselessRowCount, this.cachedItems.length - 1);
-          this.cachedItems = this.parent.querySelectorAll(this.rowSelector);
+          requestAnimationFrame(_ => {
+            this.remove(this.cachedItems.length - 1 - uselessRowCount, this.cachedItems.length - 1);
+            this.cachedItems = this.parent.querySelectorAll(this.rowSelector);
+          });
         }
       }
     }
   };
 
-  // utils로 빼기
   getListHTML = (startIndex, length) => {
     let html = '';
     for (let i = startIndex; i < startIndex + length; i++) {
