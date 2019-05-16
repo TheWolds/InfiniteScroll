@@ -5,7 +5,7 @@
 
 ![dd](infi.gif)
 
-[example](https://project42da.github.io/InfiniteScroll/examples)
+[example](https://project42da.github.io/InfiniteScroll/)
 
 <!-- ## Install
 
