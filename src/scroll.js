@@ -1,8 +1,19 @@
-import {qs, htmlStringToFragment} from './utils';
-
 const InfiniteScroll = class {
   static setScroll = obj => {
     return new InfiniteScroll().setScroll(obj);
+  };
+
+  static getHtmlString = (template, startIndex, length, height, data) => {
+    let html = '';
+    for (let i = startIndex; i < startIndex + length; i++) {
+      html += template(height, i, data[i]);
+    }
+    return html;
+  };
+
+  static htmlStringToFragment = html => {
+    if (typeof html !== 'string') err('html 문자열이 아닙니다.');
+    return document.createRange().createContextualFragment(html);
   };
 
   static defaultProps = {
@@ -20,10 +31,19 @@ const InfiniteScroll = class {
       templateHTML,
       dataList = []
     } = obj;
-    this.component = qs(componentSelector);
-    this.parent = qs(parentSelector);
+
+    this.container = document.querySelector(componentSelector);
+
+    const callback = entries => {
+      entries.forEach(entry => {
+        console.log(entry);
+      });
+    };
+    this.observer = new IntersectionObserver(callback, {root: null, threshold: 1});
+    this.observer.observe(this.container);
+    this.parent = document.querySelector(parentSelector);
     this.rowSelector = rowSelector;
-    this.componentBCR = this.component.getBoundingClientRect();
+    this.containerBCR = this.container.getBoundingClientRect();
     this.lastScrollTop = 0;
     this.lastRowIndex = -1;
     this.cachedItems = [];
@@ -32,14 +52,14 @@ const InfiniteScroll = class {
     this.dataList = dataList;
 
     this.parent.style.position = 'relative';
-    this.component.scrollTop = 0;
+    this.container.scrollTop = 0;
 
-    this.visibleRowCount = Math.ceil(this.component.clientHeight / this.rowHeight);
+    this.visibleRowCount = Math.ceil(this.container.clientHeight / this.rowHeight);
     let _preparedRowCount = Math.max(this.visibleRowCount, 20);
     this.preparedRowCount = _preparedRowCount + (_preparedRowCount % 2);
 
-    this.component.removeEventListener('scroll', this.handleScrollEvent);
-    this.component.addEventListener('scroll', this.handleScrollEvent);
+    this.container.removeEventListener('scroll', this.handleScrollEvent);
+    this.container.addEventListener('scroll', this.handleScrollEvent);
     return this;
   };
 
@@ -75,7 +95,7 @@ const InfiniteScroll = class {
 
   _handleScrollEvent = () => {
     let scrollFunc;
-    const scrollTop = this.component.scrollTop;
+    const scrollTop = this.container.scrollTop;
     const isScrollDown = scrollTop > this.lastScrollTop;
 
     if (isScrollDown) {
@@ -96,7 +116,7 @@ const InfiniteScroll = class {
       if (lastIndex + 1 < this.dataList.length) {
         this.handleScroll();
       }
-    } else if (lastChildRect.bottom < this.componentBCR.bottom + 5 * this.rowHeight) {
+    } else if (lastChildRect.bottom < this.containerBCR.bottom + 5 * this.rowHeight) {
       const startIndex = parseInt(lastChild.dataset.index, 10) + 1;
       const endIndex = startIndex + this.preparedRowCount;
       requestAnimationFrame(_ => {
@@ -108,9 +128,9 @@ const InfiniteScroll = class {
   handleScrollUp = () => {
     const firstChild = this.cachedItems[0];
     const firstChildRect = firstChild.getBoundingClientRect();
-    if (firstChildRect.top > this.componentBCR.bottom) {
+    if (firstChildRect.top > this.containerBCR.bottom) {
       this.handleScroll(false);
-    } else if (firstChildRect.top > this.componentBCR.top - 5 * this.rowHeight) {
+    } else if (firstChildRect.top > this.containerBCR.top - 5 * this.rowHeight) {
       const endCount = parseInt(firstChild.dataset.index, 10);
       const startCount = endCount - this.preparedRowCount;
       requestAnimationFrame(_ => {
@@ -125,7 +145,7 @@ const InfiniteScroll = class {
   };
 
   handleScroll = (isScrollDown = true) => {
-    const currentStartIndex = Math.floor(this.component.scrollTop / this.rowHeight);
+    const currentStartIndex = Math.floor(this.container.scrollTop / this.rowHeight);
     const startIndex = currentStartIndex - this.preparedRowCount / 2;
     const endIndex = currentStartIndex + this.visibleRowCount + this.preparedRowCount / 2;
 
@@ -158,9 +178,15 @@ const InfiniteScroll = class {
     }
 
     if (startIndex >= dataLength || dataLength === 0 || endIndex <= 0) return;
-    let _html = this.getListHTML(startIndex, endIndex - startIndex);
-    let _fragement = htmlStringToFragment(_html);
-    this.append(_fragement, isScrollDown);
+    const htmlString = InfiniteScroll.getHtmlString(
+      this.templateHTML,
+      startIndex,
+      endIndex - startIndex,
+      this.rowHeight,
+      this.dataList
+    );
+    const fragement = InfiniteScroll.htmlStringToFragment(htmlString);
+    this.append(fragement, isScrollDown);
 
     let _lastRowIndex = parseInt(this.cachedItems[this.cachedItems.length - 1].dataset.index, 10);
     if (_lastRowIndex > this.lastRowIndex) {
@@ -173,6 +199,7 @@ const InfiniteScroll = class {
   };
 
   remove = (start, end) => {
+    // 그룹으로 삭제
     for (let i = start; i <= end; i++) {
       this.parent.removeChild(this.cachedItems[i]);
     }
@@ -198,20 +225,20 @@ const InfiniteScroll = class {
 
     if (isScrollDown) {
       let firstElem = this.cachedItems[0];
-      invisibleRowHeight = firstElem.getBoundingClientRect().top - this.componentBCR.top;
+      invisibleRowHeight = firstElem.getBoundingClientRect().top - this.containerBCR.top;
       if (invisibleRowHeight < 0) {
         invisibleRowCount = Math.floor(Math.abs(invisibleRowHeight) / this.rowHeight);
         uselessRowCount = invisibleRowCount - this.preparedRowCount;
         if (uselessRowCount > 0) {
           requestAnimationFrame(_ => {
-            this.remove(0, uselessRowCount);
+            this.remove(0, uselessRowCount); // 그룹아이디를 넣어줌.
             this.cachedItems = this.parent.querySelectorAll(this.rowSelector);
           });
         }
       }
     } else {
       let lastElem = this.cachedItems[this.cachedItems.length - 1];
-      invisibleRowHeight = lastElem.getBoundingClientRect().bottom - this.componentBCR.bottom;
+      invisibleRowHeight = lastElem.getBoundingClientRect().bottom - this.containerBCR.bottom;
       if (invisibleRowHeight > 0) {
         invisibleRowCount = Math.floor(invisibleRowHeight / this.rowHeight);
         uselessRowCount = invisibleRowCount - this.preparedRowCount;
@@ -223,14 +250,6 @@ const InfiniteScroll = class {
         }
       }
     }
-  };
-
-  getListHTML = (startIndex, length) => {
-    let html = '';
-    for (let i = startIndex; i < startIndex + length; i++) {
-      html += this.templateHTML(this.rowHeight, i, this.dataList[i]);
-    }
-    return html;
   };
 };
 

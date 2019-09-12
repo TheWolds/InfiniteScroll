@@ -66,7 +66,8 @@
     "webpack-merge": "^4.2.1"
   },
   "dependencies": {
-    "@babel/polyfill": "^7.4.4"
+    "@babel/polyfill": "^7.4.4",
+    "intersection-observer-polyfill": "^0.1.0"
   },
   "repository": "https://github.com/project42da/InfiniteScroll.git"
 }
