@@ -20,9 +20,10 @@ async function fetchData(options) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  fetch(`https://swapi.co/api/people/?page=1`)
+  // fetch(`https://swapi.co/api/people/?page=1`)
+  //   .then(res => {
+  fetch(`https://jsonplaceholder.typicode.com/comments`)
     .then(res => {
-      // fetch(`https://jsonplaceholder.typicode.com/comments`).then(res => {
       if (res.status === 200) {
         return res.json();
       } else {
@@ -34,8 +35,8 @@ document.addEventListener('DOMContentLoaded', () => {
         componentSelector: '#component',
         parentSelector: '#list',
         rowSelector: '.item',
-        dataList: data.results,
-        // dataList: data,
+        // dataList: data.results,
+        dataList: data,
         rowHeight: 50,
         templateHTML: itemHTML
       });

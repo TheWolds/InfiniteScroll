@@ -1,10 +1,151 @@
-const Scroll = class {
-  constructor(template, options) {
-    this.observer = new IntersectionObserver(this.observerCallback, options);
+class Scroll {
+  static DOWN = 'scroll/DOWN';
+  static UP = 'scroll/UP';
+
+  static getItems = (template, data) => {
+    const dummy = document.createElement('div');
+    return data.map(d => {
+      dummy.innerHTML = template(d);
+      const el = dummy.childNodes[0];
+      el.style.position = 'absolute';
+      el.setAttribute('inert');
+      return {el};
+    });
+  };
+
+  constructor(container, template, loader) {
+    this.container = container;
+    this.containerBCR = this.container.getBoundingClientRect();
+    this.template = template;
+    this.loader = loader;
+
+    this.items = [];
+    this.firstEl = null;
+    this.lastEl = null;
+    this.lastTop = 0;
+
+    this.container.scrollTop = 0;
+    this.container.style.position = 'relative';
+
+    this.container.removeEventListener('scroll', this.scrollEvent);
+    this.container.addEventListener('scroll', this.scrollEvent);
   }
 
-  observerCallback = () => {};
-};
+  getDirection = () => {
+    const currentTop = this.container.scrollTop;
+    const backupLastTop = this.lastTop;
+    this.lastTop = currentTop;
+
+    if (currentTop > backupLastTop) {
+      return Scroll.DOWN;
+    }
+
+    return Scroll.UP;
+  };
+
+  updateContainer = () => {
+    // 높이 변경
+    this.container.style.height = this.lastEl.scrollTop + this.lastEl.height + 'px';
+    // 지워야하는 컨텐츠 확인.
+  };
+
+  updateElements = (startIndex, lastIndex) => {
+    let item, tmpScrollTop;
+    for (let i = startIndex; i <= lastIndex; i++) {
+      item = this.items[i];
+      tmpScrollTop = items[i - 1].scrollTop + items[i - 1].height;
+      item.el.top = tmpScrollTop;
+      item.scrollTop = tmpScrollTop;
+      item.height = item.el.offsetHeight;
+    }
+  };
+
+  scrollEvent = () => {
+    const isScrollDown = Scroll.DOWN === this.getDirection();
+    if (Scroll.DOWN === this.getDirection()) {
+      // 아래방향
+      // 현재 스크롤 위치가 라스트트리거가 보이는 위치라면
+      if (direction.scrollTop > lastGroupItem.scrollTop) {
+        // append합니다.
+        setItems(lastGroupItem.groupId + 1, isScrollDown);
+      }
+      // 끝나면 첫,마지막 아이템 갱신 this.update()
+    } else {
+      // 위쪽방향
+      // 현재 스크롤 위치가 첫번째 트리거가 보이는 위치라면
+      if (direction.scrollTop > firstGroupItem.scrollTop && firstGroupItem.groupId !== 1) {
+        // preppend 합니다.
+        setItems(lastGroupItem.groupId - 1, isScrollDown);
+      }
+      // 끝나면 첫,마지막 아이템 갱신 this.update();
+    }
+  };
+
+  // on egjs의 on같은게 필요해 내가 fetchData해줬던거처럼.
+  setItems(groupId, isScrollDown) {
+    if (this.items[groupId]) {
+      requestAnimationFrame(() => {
+        this.render(this.items[groupId], isScrollDown);
+      });
+    } else {
+      this.loader.supply(groupId).then(data => {
+        // 매번 다음거를 리턴해야할것인데, generator를 써야할듯.(로더가 캐시도 가지고 있어야할듯)
+        const items = Scroll.getItems(this.template, data, id);
+        this.items[groupId] = [items];
+
+        requestAnimationFrame(() => {
+          this.render(this.items[groupId], isScrollDown);
+        });
+      });
+    }
+  }
+
+  // ScrollItemType이 들어와야한다.
+  render(items, isScrollDown) {
+    const frag = items.reduce(
+      (acc, item) => acc.appendChild(item.el),
+      document.createDocumentFragment()
+    );
+
+    let startIndex, lastIndex;
+    if (isScrollDown) {
+      // 아래로 내려가는 중이라먄 이걸 아니라면
+      this.container.appendChild(frag);
+    } else {
+      // 아니라면
+      this.parent.insertBefore(fragment, this.container.children[0]);
+    }
+
+    this.updateElements(startIndex, lastIndex);
+    this.remove(isScrollDown);
+    this.updateContainer();
+  }
+
+  remove = isScrollDown => {
+    // firstGroup의 마지막 녀석
+    if (isScrollDown) {
+      if (
+        firstGroup[firstGroup.length - 1].scrollTop <
+        lastGroup[0].scrollTop - containerBCR.height * 3
+      ) {
+        firstGroup.forEach(item => {
+          this.container.removeChild(item.el);
+        });
+      }
+    } else {
+      if (
+        firstGroupItem[firstGroup.length - 1].scrollTop +
+          firstGroupItem[firstGroup.length - 1].height +
+          containerBCR.height * 3 <
+        lastGroup[0].scrollTop
+      ) {
+        lastGroup.forEach(item => {
+          this.container.removeChild(item.el);
+        });
+      }
+    }
+  };
+}
 
 export default Scroll;
 
@@ -75,4 +216,10 @@ data -> item {
 
 }
 
+이걸 하려고 하는 이유는 absolute를 쓰기 위해서임. 그냥 아이템을 빼버리면 엄청난 리플로우가 일어남.
+우선 배열에 들어간 아이템은 크기가 저장되지 않음.
+그런데 egjs에서는 그것을 해내고있음 방법을 알아야겠음. 방법 모르겠음.
+
+그냥 absolute로 다 박은다음에 그 위치를 이후에 변경해주는건가?
+그럼 나도 먼저 append하고 위치를 바꿔주자.
 */
