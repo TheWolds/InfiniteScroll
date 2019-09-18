@@ -2,7 +2,7 @@ import Scroll from './newScroll';
 import DataLoader from './scroll/loader';
 
 const template = data => {
-  return '<div>{data}</div>';
+  return `<div>${data.name}</div>`;
 };
 
 const app = (selector, template, api) => {
