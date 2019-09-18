@@ -2,13 +2,15 @@ class Scroll {
   static DOWN = 'scroll/DOWN';
   static UP = 'scroll/UP';
 
-  static getItems = (template, data) => {
+  static getItems = (template, data, groupId) => {
+    console.log(groupId);
     const dummy = document.createElement('div');
     return data.map(d => {
       dummy.innerHTML = template(d);
       const el = dummy.childNodes[0];
       el.style.position = 'absolute';
-      el.setAttribute('inert');
+      el.setAttribute('inert', '');
+      el.setAttribute('groupId', groupId);
       return {el};
     });
   };
@@ -20,21 +22,26 @@ class Scroll {
     this.loader = loader;
 
     this.items = [];
-    this.firstEl = null;
-    this.lastEl = null;
+    this.firstGroup = [];
+    this.lastGroup = [];
     this.lastTop = 0;
 
     this.container.scrollTop = 0;
     this.container.style.position = 'relative';
 
-    this.container.removeEventListener('scroll', this.scrollEvent);
-    this.container.addEventListener('scroll', this.scrollEvent);
+    // this.container.removeEventListener('scroll', this.scrollEvent);
+    // this.container.addEventListener('scroll', this.scrollEvent);
+    this.init();
   }
+
+  init = () => {
+    this.setItems(1, true);
+  };
 
   getDirection = () => {
     const currentTop = this.container.scrollTop;
-    const backupLastTop = this.lastTop;
-    this.lastTop = currentTop;
+    const backupLastTop = this.lastScrollTop;
+    this.lastScrollTop = currentTop;
 
     if (currentTop > backupLastTop) {
       return Scroll.DOWN;
@@ -65,7 +72,8 @@ class Scroll {
     if (Scroll.DOWN === this.getDirection()) {
       // 아래방향
       // 현재 스크롤 위치가 라스트트리거가 보이는 위치라면
-      if (direction.scrollTop > lastGroupItem.scrollTop) {
+      const lastGroupItem = this.lastGroup[0];
+      if (this.lastScrollTop.scrollTop > lastGroupItem.scrollTop) {
         // append합니다.
         setItems(lastGroupItem.groupId + 1, isScrollDown);
       }
@@ -73,9 +81,10 @@ class Scroll {
     } else {
       // 위쪽방향
       // 현재 스크롤 위치가 첫번째 트리거가 보이는 위치라면
-      if (direction.scrollTop > firstGroupItem.scrollTop && firstGroupItem.groupId !== 1) {
+      const firstGroupItem = this.firstGroup[0];
+      if (this.lastScrollTop.scrollTop > firstGroupItem.scrollTop && firstGroupItem.groupId !== 1) {
         // preppend 합니다.
-        setItems(lastGroupItem.groupId - 1, isScrollDown);
+        setItems(firstGroupItem.groupId - 1, isScrollDown);
       }
       // 끝나면 첫,마지막 아이템 갱신 this.update();
     }
@@ -83,6 +92,18 @@ class Scroll {
 
   // on egjs의 on같은게 필요해 내가 fetchData해줬던거처럼.
   setItems(groupId, isScrollDown) {
+    if (this.items.length === 0) {
+      this.loader.supply(groupId).then(data => {
+        console.log(groupId);
+        const items = Scroll.getItems(this.template, data, groupId);
+        this.items[groupId] = [...items];
+
+        requestAnimationFrame(() => {
+          this.render(this.items[groupId], isScrollDown);
+        });
+      });
+    }
+
     if (this.items[groupId]) {
       requestAnimationFrame(() => {
         this.render(this.items[groupId], isScrollDown);
@@ -90,8 +111,8 @@ class Scroll {
     } else {
       this.loader.supply(groupId).then(data => {
         // 매번 다음거를 리턴해야할것인데, generator를 써야할듯.(로더가 캐시도 가지고 있어야할듯)
-        const items = Scroll.getItems(this.template, data, id);
-        this.items[groupId] = [items];
+        const items = Scroll.getItems(this.template, data, groupId);
+        this.items[groupId] = [...items];
 
         requestAnimationFrame(() => {
           this.render(this.items[groupId], isScrollDown);
@@ -117,29 +138,29 @@ class Scroll {
     }
 
     this.updateElements(startIndex, lastIndex);
-    this.remove(isScrollDown);
-    this.updateContainer();
+    // this.remove(isScrollDown);
+    // this.updateContainer();
   }
 
   remove = isScrollDown => {
     // firstGroup의 마지막 녀석
     if (isScrollDown) {
       if (
-        firstGroup[firstGroup.length - 1].scrollTop <
-        lastGroup[0].scrollTop - containerBCR.height * 3
+        this.firstGroup[this.firstGroup.length - 1].scrollTop <
+        this.lastGroup[0].scrollTop - this.containerBCR.height * 3
       ) {
-        firstGroup.forEach(item => {
+        this.firstGroup.forEach(item => {
           this.container.removeChild(item.el);
         });
       }
     } else {
       if (
-        firstGroupItem[firstGroup.length - 1].scrollTop +
-          firstGroupItem[firstGroup.length - 1].height +
-          containerBCR.height * 3 <
-        lastGroup[0].scrollTop
+        this.firstGroup[firstGroup.length - 1].scrollTop +
+          this.firstGroup[firstGroup.length - 1].height +
+          this.containerBCR.height * 3 <
+        this.lastGroup[0].scrollTop
       ) {
-        lastGroup.forEach(item => {
+        this.lastGroup.forEach(item => {
           this.container.removeChild(item.el);
         });
       }

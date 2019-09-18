@@ -1,52 +1,18 @@
-import InfiniteScroll from './scroll';
-import './style.scss';
+import Scroll from './newScroll';
+import DataLoader from './scroll/loader';
 
-const itemHTML = (rowHeight, index, data) => {
-  let top = index * rowHeight;
-  return `<li class="item" style="position:absolute; top:${top}px;" data-index=${index}>
-      ${data.name}
-    </li>`;
+const template = data => {
+  return '<div>{data}</div>';
 };
 
-async function fetchData(options) {
-  const currentQuery = options.query;
-  const response = await fetch(`https://swapi.co/api/people/?page=${currentQuery + 1}`);
-  if (!response.ok) {
-    throw Error('더 불러올 데이터가 없습니다.');
-  }
-  options.query = currentQuery + 1;
-  const data = await response.json();
-  return data.results;
-}
+const app = (selector, template, api) => {
+  const container = document.querySelector(selector);
+  const wrapper = document.createElement('div');
+  container.appendChild(wrapper);
+  const loader = new DataLoader(api);
+  new Scroll(wrapper, template, loader);
+};
 
-document.addEventListener('DOMContentLoaded', () => {
-  // fetch(`https://swapi.co/api/people/?page=1`)
-  //   .then(res => {
-  fetch(`https://jsonplaceholder.typicode.com/comments`)
-    .then(res => {
-      if (res.status === 200) {
-        return res.json();
-      } else {
-        throw new Error('Error');
-      }
-    })
-    .then(data => {
-      const scroll = InfiniteScroll.setScroll({
-        componentSelector: '#component',
-        parentSelector: '#list',
-        rowSelector: '.item',
-        // dataList: data.results,
-        dataList: data,
-        rowHeight: 50,
-        templateHTML: itemHTML
-      });
-
-      scroll.on({
-        fetchData,
-        loading: document.getElementById('loading'),
-        options: {
-          query: 1
-        }
-      });
-    });
-});
+const api = () => {};
+app('.container', template, api());
+// export default app;
