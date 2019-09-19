@@ -23,7 +23,7 @@ class Scroll {
     this.items = [];
     this.firstGroup = [];
     this.lastGroup = [];
-    this.lastTop = 0;
+    // this.lastTop = 0;
 
     this.container.scrollTop = 0;
     this.container.style.position = 'relative';
@@ -55,10 +55,13 @@ class Scroll {
     // 지워야하는 컨텐츠 확인.
   };
 
+  // 이미렏더된 아이템의 위치를 조정함.
   updateElements = (items, isScrollDown) => {
     let groupId, lastScrollTop;
     const itemGroupId = parseInt(items[0].el.getAttribute('groupId'));
+
     if (isScrollDown) {
+      // 스크롤이 정방향인 경우
       groupId = itemGroupId - 1;
       if (groupId < 1) groupId = 1;
       lastScrollTop = this.items[groupId][this.items[groupId].length - 1].scrollTop;
@@ -70,8 +73,12 @@ class Scroll {
         item.el.style.top = lastScrollTop + 'px';
         lastScrollTop = lastScrollTop + item.height;
       });
+
+      this.lastGroup = this.items[groupId];
+      if (!this.firstGroup.length) this.firstGroup = this.items[groupId];
     } else {
-      // 0을 업데이트해야한다면 1을 기준으로
+      // 스크롤이 역방향인 경우
+      // 0을 업데이트 해야한다면 1을 기준으로
       groupId = itemGroupId + 1;
       lastScrollTop = this.items[groupId][0].scrollTop;
 
@@ -82,7 +89,12 @@ class Scroll {
         item.el.style.top = item.scrollTop + 'px';
         lastScrollTop = item.scrollTop;
       }
+
+      this.firstGroup = this.items[groupId];
+      if (!this.lastGroup.length) this.lastGroup = this.items[groupId];
     }
+
+    console.log(this);
   };
 
   scrollEvent = () => {
