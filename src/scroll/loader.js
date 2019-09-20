@@ -2,9 +2,9 @@ class DataLoader {
   constructor(api) {
     this.api = api;
     this.query = 0;
-    this.caches = [];
+    this.caches = []; // 프로미스 저장
   }
-
+  // 프로미스 반환
   fetchData = () => {
     this.query++;
     return fetch(`https://swapi.co/api/people/?page=${this.query}`)
@@ -20,7 +20,9 @@ class DataLoader {
 
   supply = groupId => {
     if (!caches[groupId]) {
-      return this.fetchData();
+      const result = this.fetchData();
+      caches[groupId] = result;
+      return result;
     }
 
     return new Promise(resolve => {

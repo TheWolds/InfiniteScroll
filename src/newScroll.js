@@ -28,13 +28,20 @@ class Scroll {
     this.container.scrollTop = 0;
     this.container.style.position = 'relative';
 
-    // this.container.removeEventListener('scroll', this.scrollEvent);
-    // this.container.addEventListener('scroll', this.scrollEvent);
+    this.container.removeEventListener('scroll', this.scrollEvent);
+    this.container.addEventListener('scroll', this.scrollEvent);
     this.init();
+    // 렌더 동시성 문제 해결해야함.
+    // this.isRendering
+    // this.isPending
+
+    window.ScrollInstance = this;
   }
 
-  init = () => {
-    this.setItems(1, true);
+  init = async () => {
+    await this.setItems(1, true);
+    await this.setItems(2, true);
+    await this.setItems(3, true);
   };
 
   getDirection = () => {
@@ -51,23 +58,33 @@ class Scroll {
 
   updateContainer = () => {
     // 높이 변경
-    this.container.style.height = this.lastEl.scrollTop + this.lastEl.height + 'px';
+    const lastItem = this.lastGroup[this.lastGroup.length - 1];
+    this.container.style.height = lastItem.scrollTop + lastItem.height + 'px';
     // 지워야하는 컨텐츠 확인.
   };
 
-  // 이미렏더된 아이템의 위치를 조정함.
-  updateElements = (items, isScrollDown) => {
-    let groupId, lastScrollTop;
-    const itemGroupId = parseInt(items[0].el.getAttribute('groupId'));
+  isOverFlow = () => {
+    // 넘치지 않았다면 setItem이나 질러야하지.
+    //     domBCR = $0.getBoundingClientRect()
+    // DOMRect {x: 0, y: 0, width: 619, height: 306, top: 0, …}
+    // contBCR = ScrollInstance.container.getBoundingClientRect()
+    // DOMRect {x: 0, y: -226, width: 619, height: 361, top: -226, …}
+    // .container는 overflow-y=auto;랑 height 100%주던가 고정값이 있던가 해야함.
+  };
 
+  // 이미렏더된 아이템의 위치를 조정함.
+  updateElements = (currentGroupId, isScrollDown) => {
+    let groupId, lastScrollTop;
+
+    const currentItems = this.items[currentGroupId];
     if (isScrollDown) {
       // 스크롤이 정방향인 경우
-      groupId = itemGroupId - 1;
+      groupId = currentGroupId - 1;
       if (groupId < 1) groupId = 1;
       lastScrollTop = this.items[groupId][this.items[groupId].length - 1].scrollTop;
 
       if (!lastScrollTop) lastScrollTop = 0;
-      items.forEach(item => {
+      currentItems.forEach(item => {
         item.scrollTop = lastScrollTop;
         item.height = item.el.offsetHeight;
         item.el.style.top = lastScrollTop + 'px';
@@ -79,11 +96,11 @@ class Scroll {
     } else {
       // 스크롤이 역방향인 경우
       // 0을 업데이트 해야한다면 1을 기준으로
-      groupId = itemGroupId + 1;
+      groupId = currentGroupId + 1;
       lastScrollTop = this.items[groupId][0].scrollTop;
 
       // 반대순서로.
-      for (let i = items.length - 1; i >= 0; i--) {
+      for (let i = currentItems.length - 1; i >= 0; i--) {
         item.height = item.el.offsetHeight;
         item.scrollTop = lastScrollTop - item.height;
         item.el.style.top = item.scrollTop + 'px';
@@ -125,25 +142,27 @@ class Scroll {
   setItems(groupId, isScrollDown) {
     if (this.items.length === 0) {
       this.loader.supply(groupId).then(data => {
-        const items = Scroll.getItems(this.template, data, groupId);
-        this.items[groupId] = items;
+        let items = Scroll.getItems(this.template, data, groupId);
+        this.items[groupId] = items; // groupId로 id저장
+        items = null;
         requestAnimationFrame(() => {
-          this.render(items, isScrollDown);
+          this.render(groupId, isScrollDown);
         });
       });
     } else {
       if (this.items[groupId]) {
         requestAnimationFrame(() => {
-          this.render(this.items[groupId], isScrollDown);
+          this.render(groupId, isScrollDown);
         });
       } else {
         this.loader.supply(groupId).then(data => {
           // 매번 다음거를 리턴해야할것인데, generator를 써야할듯.(로더가 캐시도 가지고 있어야할듯)
-          const items = Scroll.getItems(this.template, data, groupId);
+          let items = Scroll.getItems(this.template, data, groupId);
           this.items[groupId] = items;
+          items = null;
 
           requestAnimationFrame(() => {
-            this.render(items, isScrollDown);
+            this.render(groupId, isScrollDown);
           });
         });
       }
@@ -152,7 +171,8 @@ class Scroll {
 
   // 캐시에 있으면 그냥 갖다 붙이면 되는건데...이걸 또 어케 분기를...완전스파게티 제데로 볶았네
   // ScrollItemType이 들어와야한다.
-  render(items, isScrollDown) {
+  render(groupId, isScrollDown) {
+    const items = this.items[groupId];
     const frag = items.reduce((acc, item) => {
       acc.appendChild(item.el);
       return acc;
@@ -166,11 +186,13 @@ class Scroll {
       this.parent.insertBefore(fragment, this.container.children[0]);
     }
 
-    this.updateElements(items, isScrollDown);
+    this.updateElements(groupId, isScrollDown);
     // this.remove(isScrollDown);
-    // this.updateContainer();
+    this.updateContainer();
   }
 
+  // 보이지 않아도 되는 영역 제거
+  // 유지하는 범위는 this.containerBCR.height * 3
   remove = isScrollDown => {
     // firstGroup의 마지막 녀석
     if (isScrollDown) {
