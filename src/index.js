@@ -6,11 +6,11 @@ const template = data => {
 };
 
 const app = (selector, template, api) => {
-  const container = document.querySelector(selector);
-  const wrapper = document.createElement('div');
-  container.appendChild(wrapper);
+  const wrapper = document.querySelector(selector);
+  const container = document.createElement('div');
+  wrapper.appendChild(container);
   const loader = new DataLoader(api);
-  new Scroll(wrapper, template, loader);
+  new Scroll(wrapper, container, template, loader);
 };
 
 const api = () => {};

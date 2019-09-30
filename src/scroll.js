@@ -33,14 +33,6 @@ const InfiniteScroll = class {
     } = obj;
 
     this.container = document.querySelector(componentSelector);
-
-    const callback = entries => {
-      entries.forEach(entry => {
-        console.log(entry);
-      });
-    };
-    this.observer = new IntersectionObserver(callback, {root: null, threshold: 1});
-    this.observer.observe(this.container);
     this.parent = document.querySelector(parentSelector);
     this.rowSelector = rowSelector;
     this.containerBCR = this.container.getBoundingClientRect();

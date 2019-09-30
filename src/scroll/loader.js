@@ -1,3 +1,7 @@
+// var promises = urls.map(url => fetch(url).then(y => y.text()));
+// Promise.all(promises).then(results => {
+//     // do something with results.
+// });
 class DataLoader {
   constructor(api) {
     this.api = api;

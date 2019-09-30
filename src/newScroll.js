@@ -14,22 +14,23 @@ class Scroll {
     });
   };
 
-  constructor(container, template, loader) {
+  constructor(wrapper, container, template, loader) {
     this.container = container;
-    this.containerBCR = this.container.getBoundingClientRect();
+    this.wrapper = wrapper;
+    this.wrapperBCR = this.wrapper.getBoundingClientRect();
     this.template = template;
     this.loader = loader;
 
     this.items = [];
     this.firstGroup = [];
     this.lastGroup = [];
-    // this.lastTop = 0;
+    // this.lastScrollTop = 0; // 아씨 이거 뭐지? 문서를 만들어둬야겠다 뭐가뭔지 모르겠네 시벌
 
     this.container.scrollTop = 0;
     this.container.style.position = 'relative';
 
-    this.container.removeEventListener('scroll', this.scrollEvent);
-    this.container.addEventListener('scroll', this.scrollEvent);
+    this.wrapper.removeEventListener('scroll', this.scrollEvent);
+    this.wrapper.addEventListener('scroll', this.scrollEvent);
     this.init();
     // 렌더 동시성 문제 해결해야함.
     // this.isRendering
@@ -38,10 +39,9 @@ class Scroll {
     window.ScrollInstance = this;
   }
 
-  init = async () => {
-    await this.setItems(1, true);
-    await this.setItems(2, true);
-    await this.setItems(3, true);
+  init = () => {
+    this.setItems(1, true);
+    // this.scrollEvent(); 원래 이게 와야 함 그러므로 seItems의 default가 존재해야한다.
   };
 
   getDirection = () => {
@@ -115,12 +115,18 @@ class Scroll {
   };
 
   scrollEvent = () => {
+    console.log('스크롤 이벤트 작동');
+    console.log(
+      this.lastGroup[this.lastGroup.length - 1],
+      this.wrapperBCR,
+      this.container.getBoundingClientRect()
+    );
     const isScrollDown = Scroll.DOWN === this.getDirection();
     if (Scroll.DOWN === this.getDirection()) {
       // 아래방향
       // 현재 스크롤 위치가 라스트트리거가 보이는 위치라면
       const lastGroupItem = this.lastGroup[0];
-      if (this.lastScrollTop.scrollTop > lastGroupItem.scrollTop) {
+      if (this.wrapper.scrollTop > lastGroupItem.scrollTop) {
         // append합니다.
         setItems(lastGroupItem.groupId + 1, isScrollDown);
       }
@@ -128,8 +134,8 @@ class Scroll {
     } else {
       // 위쪽방향
       // 현재 스크롤 위치가 첫번째 트리거가 보이는 위치라면
-      const firstGroupItem = this.firstGroup[0];
-      if (this.lastScrollTop.scrollTop > firstGroupItem.scrollTop && firstGroupItem.groupId !== 1) {
+      const firstGroupItem = this.firstGroup[this.firstGroup.length - 1]; // 마지막 자식
+      if (this.wrapper.scrollTop < firstGroupItem.scrollTop && firstGroupItem.groupId !== 1) {
         // preppend 합니다.
         setItems(firstGroupItem.groupId - 1, isScrollDown);
       }
@@ -139,7 +145,8 @@ class Scroll {
 
   // TODO 리팩토링
   // on egjs의 on같은게 필요해 내가 fetchData해줬던거처럼.
-  setItems(groupId, isScrollDown) {
+  setItems(groupId = 1, isScrollDown = true) {
+    console.log('setItems 작동');
     if (this.items.length === 0) {
       this.loader.supply(groupId).then(data => {
         let items = Scroll.getItems(this.template, data, groupId);
@@ -192,13 +199,13 @@ class Scroll {
   }
 
   // 보이지 않아도 되는 영역 제거
-  // 유지하는 범위는 this.containerBCR.height * 3
+  // 유지하는 범위는 this.wrapperBCR.height * 3
   remove = isScrollDown => {
     // firstGroup의 마지막 녀석
     if (isScrollDown) {
       if (
         this.firstGroup[this.firstGroup.length - 1].scrollTop <
-        this.lastGroup[0].scrollTop - this.containerBCR.height * 3
+        this.lastGroup[0].scrollTop - this.wrapperBCR.height * 3
       ) {
         this.firstGroup.forEach(item => {
           this.container.removeChild(item.el);
@@ -208,7 +215,7 @@ class Scroll {
       if (
         this.firstGroup[firstGroup.length - 1].scrollTop +
           this.firstGroup[firstGroup.length - 1].height +
-          this.containerBCR.height * 3 <
+          this.wrapperBCR.height * 3 <
         this.lastGroup[0].scrollTop
       ) {
         this.lastGroup.forEach(item => {
