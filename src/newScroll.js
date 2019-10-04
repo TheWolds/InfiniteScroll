@@ -24,7 +24,7 @@ class Scroll {
     this.items = [];
     this.firstGroup = [];
     this.lastGroup = [];
-    // this.lastScrollTop = 0; // 아씨 이거 뭐지? 문서를 만들어둬야겠다 뭐가뭔지 모르겠네 시벌
+    this.lastScrollTop = 0; // 아씨 이거 뭐지? 문서를 만들어둬야겠다 뭐가뭔지 모르겠네 시벌
 
     this.container.scrollTop = 0;
     this.container.style.position = 'relative';
@@ -34,7 +34,7 @@ class Scroll {
     this.init();
     // 렌더 동시성 문제 해결해야함.
     // this.isRendering
-    // this.isPending
+    this.isPending = false;
 
     window.ScrollInstance = this;
   }
@@ -44,16 +44,21 @@ class Scroll {
     // this.scrollEvent(); 원래 이게 와야 함 그러므로 seItems의 default가 존재해야한다.
   };
 
-  getDirection = () => {
-    const currentTop = this.container.scrollTop;
+  isScrollDown = () => {
+    const currentTop = this.wrapper.scrollTop;
     const backupLastTop = this.lastScrollTop;
     this.lastScrollTop = currentTop;
-
     if (currentTop > backupLastTop) {
-      return Scroll.DOWN;
+      return true;
     }
 
-    return Scroll.UP;
+    return false;
+  };
+
+  getGroupId = item => {
+    const {el} = item;
+    const groupId = parseInt(el.getAttribute('groupId'), 10);
+    return groupId;
   };
 
   updateContainer = () => {
@@ -78,10 +83,13 @@ class Scroll {
 
     const currentItems = this.items[currentGroupId];
     if (isScrollDown) {
+      console.log('내려감');
       // 스크롤이 정방향인 경우
       groupId = currentGroupId - 1;
       if (groupId < 1) groupId = 1;
-      lastScrollTop = this.items[groupId][this.items[groupId].length - 1].scrollTop;
+      lastScrollTop =
+        this.items[groupId][this.items[groupId].length - 1].scrollTop +
+        currentItems[0].el.offsetHeight;
 
       if (!lastScrollTop) lastScrollTop = 0;
       currentItems.forEach(item => {
@@ -91,9 +99,10 @@ class Scroll {
         lastScrollTop = lastScrollTop + item.height;
       });
 
-      this.lastGroup = this.items[groupId];
+      this.lastGroup = this.items[currentGroupId];
       if (!this.firstGroup.length) this.firstGroup = this.items[groupId];
     } else {
+      console.log('올라감');
       // 스크롤이 역방향인 경우
       // 0을 업데이트 해야한다면 1을 기준으로
       groupId = currentGroupId + 1;
@@ -101,43 +110,40 @@ class Scroll {
 
       // 반대순서로.
       for (let i = currentItems.length - 1; i >= 0; i--) {
-        item.height = item.el.offsetHeight;
-        item.scrollTop = lastScrollTop - item.height;
-        item.el.style.top = item.scrollTop + 'px';
-        lastScrollTop = item.scrollTop;
+        currentItems[i].height = currentItems[i].el.offsetHeight;
+        currentItems[i].scrollTop = lastScrollTop - currentItems[i].height;
+        currentItems[i].el.style.top = currentItems[i].scrollTop + 'px';
+        lastScrollTop = currentItems[i].scrollTop;
       }
 
-      this.firstGroup = this.items[groupId];
+      this.firstGroup = this.items[currentGroupId];
       if (!this.lastGroup.length) this.lastGroup = this.items[groupId];
     }
 
-    console.log(this);
+    // console.log(this);
   };
 
   scrollEvent = () => {
-    console.log('스크롤 이벤트 작동');
-    console.log(
-      this.lastGroup[this.lastGroup.length - 1],
-      this.wrapperBCR,
-      this.container.getBoundingClientRect()
-    );
-    const isScrollDown = Scroll.DOWN === this.getDirection();
-    if (Scroll.DOWN === this.getDirection()) {
+    const isScrollDown = this.isScrollDown();
+    if (isScrollDown) {
       // 아래방향
       // 현재 스크롤 위치가 라스트트리거가 보이는 위치라면
       const lastGroupItem = this.lastGroup[0];
+      const lastGroupId = this.getGroupId(lastGroupItem);
       if (this.wrapper.scrollTop > lastGroupItem.scrollTop) {
         // append합니다.
-        setItems(lastGroupItem.groupId + 1, isScrollDown);
+        console.log(lastGroupItem);
+        this.setItems(lastGroupId + 1, isScrollDown);
       }
       // 끝나면 첫,마지막 아이템 갱신 this.update()
     } else {
       // 위쪽방향
       // 현재 스크롤 위치가 첫번째 트리거가 보이는 위치라면
       const firstGroupItem = this.firstGroup[this.firstGroup.length - 1]; // 마지막 자식
-      if (this.wrapper.scrollTop < firstGroupItem.scrollTop && firstGroupItem.groupId !== 1) {
+      const firstGroupId = this.getGroupId(firstGroupItem);
+      if (this.wrapper.scrollTop < firstGroupItem.scrollTop && firstGroupId !== 1) {
         // preppend 합니다.
-        setItems(firstGroupItem.groupId - 1, isScrollDown);
+        this.setItems(firstGroupId - 1, isScrollDown);
       }
       // 끝나면 첫,마지막 아이템 갱신 this.update();
     }
@@ -146,8 +152,8 @@ class Scroll {
   // TODO 리팩토링
   // on egjs의 on같은게 필요해 내가 fetchData해줬던거처럼.
   setItems(groupId = 1, isScrollDown = true) {
-    console.log('setItems 작동');
     if (this.items.length === 0) {
+      console.log('길이가 0인경우');
       this.loader.supply(groupId).then(data => {
         let items = Scroll.getItems(this.template, data, groupId);
         this.items[groupId] = items; // groupId로 id저장
@@ -158,20 +164,27 @@ class Scroll {
       });
     } else {
       if (this.items[groupId]) {
+        console.log('아이템이 있는경우', groupId);
         requestAnimationFrame(() => {
           this.render(groupId, isScrollDown);
         });
       } else {
-        this.loader.supply(groupId).then(data => {
-          // 매번 다음거를 리턴해야할것인데, generator를 써야할듯.(로더가 캐시도 가지고 있어야할듯)
-          let items = Scroll.getItems(this.template, data, groupId);
-          this.items[groupId] = items;
-          items = null;
+        console.log('아이템이 없는경우', groupId);
+        if (!this.pending) {
+          this.pending = true;
+          this.loader.supply(groupId).then(data => {
+            console.log(groupId);
+            // 매번 다음거를 리턴해야할것인데, generator를 써야할듯.(로더가 캐시도 가지고 있어야할듯)
+            let items = Scroll.getItems(this.template, data, groupId);
+            this.items[groupId] = items;
+            items = null;
 
-          requestAnimationFrame(() => {
-            this.render(groupId, isScrollDown);
+            requestAnimationFrame(() => {
+              this.render(groupId, isScrollDown);
+              this.pending = false;
+            });
           });
-        });
+        }
       }
     }
   }
@@ -190,7 +203,7 @@ class Scroll {
       this.container.appendChild(frag);
     } else {
       // 아니라면
-      this.parent.insertBefore(fragment, this.container.children[0]);
+      this.container.insertBefore(frag, this.container.children[0]);
     }
 
     this.updateElements(groupId, isScrollDown);

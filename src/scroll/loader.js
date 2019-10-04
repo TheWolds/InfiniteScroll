@@ -9,9 +9,8 @@ class DataLoader {
     this.caches = []; // 프로미스 저장
   }
   // 프로미스 반환
-  fetchData = () => {
-    this.query++;
-    return fetch(`https://swapi.co/api/people/?page=${this.query}`)
+  fetchData = groupId => {
+    return fetch(`https://swapi.co/api/people/?page=${groupId}`)
       .then(res => {
         if (res.status === 200) {
           return res.json();
@@ -24,7 +23,7 @@ class DataLoader {
 
   supply = groupId => {
     if (!caches[groupId]) {
-      const result = this.fetchData();
+      const result = this.fetchData(groupId);
       caches[groupId] = result;
       return result;
     }
