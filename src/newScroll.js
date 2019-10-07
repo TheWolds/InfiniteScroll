@@ -83,7 +83,6 @@ class Scroll {
 
     const currentItems = this.items[currentGroupId];
     if (isScrollDown) {
-      console.log('내려감');
       // 스크롤이 정방향인 경우
       groupId = currentGroupId - 1;
       if (groupId < 1) groupId = 1;
@@ -102,7 +101,6 @@ class Scroll {
       this.lastGroup = this.items[currentGroupId];
       if (!this.firstGroup.length) this.firstGroup = this.items[groupId];
     } else {
-      console.log('올라감');
       // 스크롤이 역방향인 경우
       // 0을 업데이트 해야한다면 1을 기준으로
       groupId = currentGroupId + 1;
@@ -120,7 +118,7 @@ class Scroll {
       if (!this.lastGroup.length) this.lastGroup = this.items[groupId];
     }
 
-    // console.log(this);
+    console.log(this);
   };
 
   scrollEvent = () => {
@@ -132,7 +130,7 @@ class Scroll {
       const lastGroupId = this.getGroupId(lastGroupItem);
       if (this.wrapper.scrollTop > lastGroupItem.scrollTop) {
         // append합니다.
-        console.log(lastGroupItem);
+        // console.log(lastGroupItem);
         this.setItems(lastGroupId + 1, isScrollDown);
       }
       // 끝나면 첫,마지막 아이템 갱신 this.update()
@@ -153,7 +151,7 @@ class Scroll {
   // on egjs의 on같은게 필요해 내가 fetchData해줬던거처럼.
   setItems(groupId = 1, isScrollDown = true) {
     if (this.items.length === 0) {
-      console.log('길이가 0인경우');
+      // console.log('길이가 0인경우');
       this.loader.supply(groupId).then(data => {
         let items = Scroll.getItems(this.template, data, groupId);
         this.items[groupId] = items; // groupId로 id저장
@@ -164,16 +162,15 @@ class Scroll {
       });
     } else {
       if (this.items[groupId]) {
-        console.log('아이템이 있는경우', groupId);
+        // console.log('아이템이 있는경우', groupId);
         requestAnimationFrame(() => {
           this.render(groupId, isScrollDown);
         });
       } else {
-        console.log('아이템이 없는경우', groupId);
+        // console.log('아이템이 없는경우', groupId);
         if (!this.pending) {
           this.pending = true;
           this.loader.supply(groupId).then(data => {
-            console.log(groupId);
             // 매번 다음거를 리턴해야할것인데, generator를 써야할듯.(로더가 캐시도 가지고 있어야할듯)
             let items = Scroll.getItems(this.template, data, groupId);
             this.items[groupId] = items;
@@ -207,33 +204,40 @@ class Scroll {
     }
 
     this.updateElements(groupId, isScrollDown);
-    // this.remove(isScrollDown);
     this.updateContainer();
+    this.removeElements(isScrollDown);
   }
 
   // 보이지 않아도 되는 영역 제거
   // 유지하는 범위는 this.wrapperBCR.height * 3
-  remove = isScrollDown => {
-    // firstGroup의 마지막 녀석
+  removeElements = isScrollDown => {
+    // firstGroup의 마지막 요소가(el)
+    console.log(isScrollDown);
+    const firstGroupLastItem = this.firstGroup[this.firstGroup.length - 1];
+    const lastGroupFirstItem = this.lastGroup[0];
+    const firstGroupId = this.getGroupId(firstGroupLastItem);
+    const lastGroupId = this.getGroupId(lastGroupFirstItem);
+
     if (isScrollDown) {
       if (
-        this.firstGroup[this.firstGroup.length - 1].scrollTop <
-        this.lastGroup[0].scrollTop - this.wrapperBCR.height * 3
+        firstGroupLastItem.scrollTop <
+        lastGroupFirstItem.scrollTop - this.wrapperBCR.height * 3
       ) {
         this.firstGroup.forEach(item => {
           this.container.removeChild(item.el);
         });
+
+        this.firstGroup = this.items[firstGroupId + 1];
       }
     } else {
       if (
-        this.firstGroup[firstGroup.length - 1].scrollTop +
-          this.firstGroup[firstGroup.length - 1].height +
-          this.wrapperBCR.height * 3 <
-        this.lastGroup[0].scrollTop
+        firstGroupLastItem.scrollTop + firstGroupLastItem.height + this.wrapperBCR.height * 3 <
+        lastGroupFirstItem.scrollTop
       ) {
         this.lastGroup.forEach(item => {
           this.container.removeChild(item.el);
         });
+        this.lastGroup = this.items[lastGroupId - 1];
       }
     }
   };
