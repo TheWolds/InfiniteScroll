@@ -1,50 +1,45 @@
 const path = require('path');
+const Autoprefixer = require('autoprefixer');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const webpack = require('webpack');
 
 module.exports = {
-    entry: {
-        app: ['@babel/polyfill', path.resolve(__dirname, '../src/index.js')]
-    },
-    devServer: {
-        contentBase: path.resolve(__dirname, '../examples'),
-        hot: true,
-    },
-    plugins: [
-        new webpack.HotModuleReplacementPlugin(),
-        new HtmlWebpackPlugin({
-            title: `TODO ${process.env.NODE_ENV}`,
-            template: path.resolve(__dirname, '../public/index.html')
-        })
-    ],
-    module: {
-        rules: [
-            {
-                test: /\.(sa|sc|c)ss$/,
-                use: [
-                    "style-loader",
-                    "css-loader",
-                    "sass-loader",
-                ]
-            },
-            {
-                test: /\.(png|jpg|gif|svg|ico)$/,
-                use: 'file-loader'
-            },
-            {
-                test: /\.(eot|woff|woff2|ttf)$/,
-                exclude: /node_modules/,
-                use: [
-                    {
-                        loader: 'file-loader',
-                        options: {
-                            name: '[name].[ext]',
-                            outputPath: './font/',
-                            publicPath: './font/'
-                        }
-                    }
-                ]
+  entry: {
+    app: ['@babel/polyfill', path.resolve(__dirname, '../examples/app.js')]
+  },
+  devServer: {
+    contentBase: path.resolve(__dirname, '../examples'),
+    hot: true
+  },
+  plugins: [
+    new webpack.HotModuleReplacementPlugin(),
+    new HtmlWebpackPlugin({
+      title: `${process.env.NODE_ENV}`,
+      template: path.resolve(__dirname, '../examples/index.html')
+    })
+  ],
+  module: {
+    rules: [
+      {
+        test: /\.(c|sa|sc)ss$/,
+        exclude: /node_modules/,
+        use: [
+          {
+            loader: 'css-loader',
+            options: {
+              importLoaders: 1
             }
+          },
+          {
+            loader: 'postcss-loader',
+            ident: 'postcss',
+            options: {
+              plugins: [Autoprefixer()]
+            }
+          },
+          'sass-loader'
         ]
-    }
-}
+      }
+    ]
+  }
+};

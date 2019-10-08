@@ -1,248 +1,252 @@
-const InfiniteScroll = class {
-  static setScroll = obj => {
-    return new InfiniteScroll().setScroll(obj);
+class Scroll {
+  static DOWN = 'scroll/DOWN';
+  static UP = 'scroll/UP';
+
+  static getItems = (template, data, groupId) => {
+    return data.map(d => {
+      const dummy = document.createElement('div');
+      dummy.innerHTML = template(d);
+      const el = dummy.childNodes[0];
+      el.style.position = 'absolute';
+      el.style.top = '-1px';
+      el.setAttribute('inert', '');
+      el.setAttribute('groupId', groupId);
+      return {el};
+    });
   };
 
-  static getHtmlString = (template, startIndex, length, height, data) => {
-    let html = '';
-    for (let i = startIndex; i < startIndex + length; i++) {
-      html += template(height, i, data[i]);
-    }
-    return html;
-  };
+  constructor(wrapper, container, template, loader) {
+    this.container = container;
+    this.wrapper = wrapper;
+    this.wrapperBCR = this.wrapper.getBoundingClientRect();
+    this.template = template;
+    this.loader = loader;
+    this.rangeLevel = 4;
 
-  static htmlStringToFragment = html => {
-    if (typeof html !== 'string') err('html 문자열이 아닙니다.');
-    return document.createRange().createContextualFragment(html);
-  };
+    this.items = [];
+    this.firstGroup = [];
+    this.lastGroup = [];
+    this.lastScrollTop = 0; // 아씨 이거 뭐지? 문서를 만들어둬야겠다 뭐가뭔지 모르겠네 시벌
 
-  static defaultProps = {
-    fetchData: false,
-    loading: false,
-    isPending: false
-  };
-
-  setScroll = obj => {
-    const {
-      componentSelector,
-      parentSelector,
-      rowSelector,
-      rowHeight,
-      templateHTML,
-      dataList = []
-    } = obj;
-
-    this.container = document.querySelector(componentSelector);
-    this.parent = document.querySelector(parentSelector);
-    this.rowSelector = rowSelector;
-    this.containerBCR = this.container.getBoundingClientRect();
-    this.lastScrollTop = 0;
-    this.lastRowIndex = -1;
-    this.cachedItems = [];
-    this.rowHeight = rowHeight;
-    this.templateHTML = templateHTML;
-    this.dataList = dataList;
-
-    this.parent.style.position = 'relative';
     this.container.scrollTop = 0;
+    this.container.style.position = 'relative';
 
-    this.visibleRowCount = Math.ceil(this.container.clientHeight / this.rowHeight);
-    let _preparedRowCount = Math.max(this.visibleRowCount, 20);
-    this.preparedRowCount = _preparedRowCount + (_preparedRowCount % 2);
+    this.wrapper.removeEventListener('scroll', this.scrollEvent);
+    this.wrapper.addEventListener('scroll', this.scrollEvent);
+    this.init();
+    // 렌더 동시성 문제 해결해야함.
+    // this.isRendering
+    this.isPending = false;
 
-    this.container.removeEventListener('scroll', this.handleScrollEvent);
-    this.container.addEventListener('scroll', this.handleScrollEvent);
-    return this;
+    window.ScrollInstance = this;
+  }
+
+  init = () => {
+    this.setItems(1, true);
+    // this.scrollEvent(); 원래 이게 와야 함 그러므로 seItems의 default가 존재해야한다.
   };
 
-  /**
-   * 인피니티 스크롤을 실행하는 메소드. props로 optional 메소드를 받는다.
-   * @param {*} props optional 메소드
-   *
-   * - `fetchData` : 스크롤시에 비동기적으로 데이터를 불러온다. 프로미스 객체 리턴
-   * - `loading` : 로딩중에 보여줄 요소(예를들어 로딩 인디케이터)
-   * - `option` : fetchData에 넘겨줄 옵션객체. 데이터를 불러올 쿼리를 저장
-   */
-  on = (props = defaultProps) => {
-    if (props.fetchData) {
-      this.fetchData = props.fetchData.bind(this);
-      this.isPending = props.isPending;
-
-      if (props.loading) {
-        this.loading = props.loading;
-      }
-
-      if (props.options) {
-        this.options = props.options;
-      }
+  isScrollDown = () => {
+    const currentTop = this.wrapper.scrollTop;
+    const backupLastTop = this.lastScrollTop;
+    this.lastScrollTop = currentTop;
+    if (currentTop > backupLastTop) {
+      return true;
     }
-    this.handleScroll();
+
+    return false;
   };
 
-  handleScrollEvent = () => {
-    requestAnimationFrame(() => {
-      this._handleScrollEvent();
-    });
+  getGroupId = item => {
+    const {el} = item;
+    const groupId = parseInt(el.getAttribute('groupId'), 10);
+    return groupId;
   };
 
-  _handleScrollEvent = () => {
-    let scrollFunc;
-    const scrollTop = this.container.scrollTop;
-    const isScrollDown = scrollTop > this.lastScrollTop;
+  updateContainer = () => {
+    // 높이 변경
+    const lastItem = this.lastGroup[this.lastGroup.length - 1];
+    this.container.style.height = lastItem.scrollTop + lastItem.height + 'px';
+    // 지워야하는 컨텐츠 확인.
+  };
 
+  isOverFlow = () => {
+    // 넘치지 않았다면 setItem이나 질러야하지.
+    //     domBCR = $0.getBoundingClientRect()
+    // DOMRect {x: 0, y: 0, width: 619, height: 306, top: 0, …}
+    // contBCR = ScrollInstance.container.getBoundingClientRect()
+    // DOMRect {x: 0, y: -226, width: 619, height: 361, top: -226, …}
+    // .container는 overflow-y=auto;랑 height 100%주던가 고정값이 있던가 해야함.
+  };
+
+  // 이미렏더된 아이템의 위치를 조정함.
+  updateElements = (currentGroupId, isScrollDown) => {
+    let groupId, lastScrollTop;
+
+    const currentItems = this.items[currentGroupId];
     if (isScrollDown) {
-      scrollFunc = this.handleScrollDown;
+      // 스크롤이 정방향인 경우
+      groupId = currentGroupId - 1;
+      if (groupId < 1) groupId = 1;
+      const currentLastGroupLastItem = this.items[groupId][this.items[groupId].length - 1];
+      lastScrollTop = currentLastGroupLastItem.scrollTop + currentLastGroupLastItem.height;
+
+      if (!lastScrollTop) lastScrollTop = 0;
+      currentItems.forEach(item => {
+        item.scrollTop = lastScrollTop;
+        item.height = item.el.offsetHeight;
+        item.el.style.top = lastScrollTop + 'px';
+        lastScrollTop = lastScrollTop + item.height;
+      });
+
+      this.lastGroup = this.items[currentGroupId];
+      if (!this.firstGroup.length) this.firstGroup = this.items[groupId];
     } else {
-      scrollFunc = this.handleScrollUp;
-    }
-    this.lastScrollTop = scrollTop;
-    scrollFunc();
-  };
+      // 스크롤이 역방향인 경우
+      // 0을 업데이트 해야한다면 1을 기준으로
+      groupId = currentGroupId + 1;
+      lastScrollTop = this.items[groupId][0].scrollTop;
 
-  handleScrollDown = () => {
-    const lastChild = this.cachedItems[this.cachedItems.length - 1];
-    const lastChildRect = lastChild.getBoundingClientRect();
-
-    if (lastChildRect.bottom < 0) {
-      const lastIndex = parseInt(lastChild.dataset.index, 10);
-      if (lastIndex + 1 < this.dataList.length) {
-        this.handleScroll();
+      // 반대순서로.
+      for (let i = currentItems.length - 1; i >= 0; i--) {
+        currentItems[i].height = currentItems[i].el.offsetHeight;
+        currentItems[i].scrollTop = lastScrollTop - currentItems[i].height;
+        currentItems[i].el.style.top = currentItems[i].scrollTop + 'px';
+        lastScrollTop = currentItems[i].scrollTop;
       }
-    } else if (lastChildRect.bottom < this.containerBCR.bottom + 5 * this.rowHeight) {
-      const startIndex = parseInt(lastChild.dataset.index, 10) + 1;
-      const endIndex = startIndex + this.preparedRowCount;
-      requestAnimationFrame(_ => {
-        this.render(startIndex, endIndex, true);
-      });
-    }
-  };
 
-  handleScrollUp = () => {
-    const firstChild = this.cachedItems[0];
-    const firstChildRect = firstChild.getBoundingClientRect();
-    if (firstChildRect.top > this.containerBCR.bottom) {
-      this.handleScroll(false);
-    } else if (firstChildRect.top > this.containerBCR.top - 5 * this.rowHeight) {
-      const endCount = parseInt(firstChild.dataset.index, 10);
-      const startCount = endCount - this.preparedRowCount;
-      requestAnimationFrame(_ => {
-        this.render(startCount, endCount, false);
-      });
-    }
-  };
-
-  handleLoading = isloading => {
-    const prefix = !isloading ? 'set' : 'remove';
-    this.loading[prefix + 'Attribute']('aria-hidden', 'true');
-  };
-
-  handleScroll = (isScrollDown = true) => {
-    const currentStartIndex = Math.floor(this.container.scrollTop / this.rowHeight);
-    const startIndex = currentStartIndex - this.preparedRowCount / 2;
-    const endIndex = currentStartIndex + this.visibleRowCount + this.preparedRowCount / 2;
-
-    requestAnimationFrame(_ => {
-      this.render(startIndex, endIndex, isScrollDown);
-    });
-  };
-
-  render = (startIndex, endIndex, isScrollDown) => {
-    const dataLength = this.dataList.length;
-    if (startIndex < 0) startIndex = 0;
-    if (endIndex > dataLength) {
-      if (this.fetchData && !this.isPending) {
-        this.isPending = true;
-        this.handleLoading(this.isPending);
-        this.fetchData(this.options)
-          .then(data => {
-            this.dataList = [...this.dataList, ...data];
-            this.render(endIndex, this.dataList.length, isScrollDown);
-            this.isPending = false;
-            this.handleLoading(this.isPending);
-            return;
-          })
-          .catch(e => {
-            this.handleLoading(false);
-            console.log(e);
-          });
-      }
-      endIndex = dataLength;
+      this.firstGroup = this.items[currentGroupId];
+      if (!this.lastGroup.length) this.lastGroup = this.items[groupId];
     }
 
-    if (startIndex >= dataLength || dataLength === 0 || endIndex <= 0) return;
-    const htmlString = InfiniteScroll.getHtmlString(
-      this.templateHTML,
-      startIndex,
-      endIndex - startIndex,
-      this.rowHeight,
-      this.dataList
-    );
-    const fragement = InfiniteScroll.htmlStringToFragment(htmlString);
-    this.append(fragement, isScrollDown);
-
-    let _lastRowIndex = parseInt(this.cachedItems[this.cachedItems.length - 1].dataset.index, 10);
-    if (_lastRowIndex > this.lastRowIndex) {
-      this.lastRowIndex = _lastRowIndex;
-
-      requestAnimationFrame(_ => {
-        this.parent.style.height = this.lastRowIndex * this.rowHeight + 'px';
-      });
-    }
+    console.log(this);
   };
 
-  remove = (start, end) => {
-    // 그룹으로 삭제
-    for (let i = start; i <= end; i++) {
-      this.parent.removeChild(this.cachedItems[i]);
-    }
-  };
-
-  append = (fragment, isScrollDown) => {
+  scrollEvent = () => {
+    const isScrollDown = this.isScrollDown();
     if (isScrollDown) {
-      console.log('내려감');
-      this.parent.appendChild(fragment);
+      // 아래방향
+      // 현재 스크롤 위치가 라스트트리거가 보이는 위치라면
+      const lastGroupItem = this.lastGroup[0];
+      const lastGroupId = this.getGroupId(lastGroupItem);
+      if (this.wrapper.scrollTop > lastGroupItem.scrollTop) {
+        // append합니다.
+        // console.log(lastGroupItem);
+        this.setItems(lastGroupId + 1, isScrollDown);
+      }
+      // 끝나면 첫,마지막 아이템 갱신 this.update()
     } else {
-      console.log('올라감');
-      this.parent.insertBefore(fragment, this.parent.children[0]);
+      // 위쪽방향
+      // 현재 스크롤 위치가 첫번째 트리거가 보이는 위치라면
+      const firstGroupItem = this.firstGroup[this.firstGroup.length - 1]; // 마지막 자식
+      const firstGroupId = this.getGroupId(firstGroupItem);
+      if (this.wrapper.scrollTop < firstGroupItem.scrollTop && firstGroupId !== 1) {
+        // preppend 합니다.
+        this.setItems(firstGroupId - 1, isScrollDown);
+      }
+      // 끝나면 첫,마지막 아이템 갱신 this.update();
     }
-
-    this.cachedItems = this.parent.querySelectorAll(this.rowSelector);
-    this.update(isScrollDown);
   };
 
-  update = isScrollDown => {
-    let uselessRowCount;
-    let invisibleRowCount;
-    let invisibleRowHeight;
-
-    if (isScrollDown) {
-      let firstElem = this.cachedItems[0];
-      invisibleRowHeight = firstElem.getBoundingClientRect().top - this.containerBCR.top;
-      if (invisibleRowHeight < 0) {
-        invisibleRowCount = Math.floor(Math.abs(invisibleRowHeight) / this.rowHeight);
-        uselessRowCount = invisibleRowCount - this.preparedRowCount;
-        if (uselessRowCount > 0) {
-          requestAnimationFrame(_ => {
-            this.remove(0, uselessRowCount); // 그룹아이디를 넣어줌.
-            this.cachedItems = this.parent.querySelectorAll(this.rowSelector);
-          });
-        }
-      }
+  // TODO 리팩토링
+  // on egjs의 on같은게 필요해 내가 fetchData해줬던거처럼.
+  setItems(groupId = 1, isScrollDown = true) {
+    if (this.items.length === 0) {
+      // console.log('길이가 0인경우');
+      this.loader.supply(groupId).then(data => {
+        let items = Scroll.getItems(this.template, data, groupId);
+        this.items[groupId] = items; // groupId로 id저장
+        items = null;
+        requestAnimationFrame(() => {
+          this.render(groupId, isScrollDown);
+        });
+      });
     } else {
-      let lastElem = this.cachedItems[this.cachedItems.length - 1];
-      invisibleRowHeight = lastElem.getBoundingClientRect().bottom - this.containerBCR.bottom;
-      if (invisibleRowHeight > 0) {
-        invisibleRowCount = Math.floor(invisibleRowHeight / this.rowHeight);
-        uselessRowCount = invisibleRowCount - this.preparedRowCount;
-        if (uselessRowCount > 0) {
-          requestAnimationFrame(_ => {
-            this.remove(this.cachedItems.length - 1 - uselessRowCount, this.cachedItems.length - 1);
-            this.cachedItems = this.parent.querySelectorAll(this.rowSelector);
+      if (this.items[groupId]) {
+        // console.log('아이템이 있는경우', groupId);
+        requestAnimationFrame(() => {
+          this.render(groupId, isScrollDown);
+        });
+      } else {
+        // console.log('아이템이 없는경우', groupId);
+        if (!this.pending) {
+          this.pending = true;
+          this.loader.supply(groupId).then(data => {
+            // 매번 다음거를 리턴해야할것인데, generator를 써야할듯.(로더가 캐시도 가지고 있어야할듯)
+            let items = Scroll.getItems(this.template, data, groupId);
+            this.items[groupId] = items;
+            items = null;
+
+            requestAnimationFrame(() => {
+              this.render(groupId, isScrollDown);
+              this.pending = false;
+            });
           });
         }
       }
     }
-  };
-};
+  }
 
-export default InfiniteScroll;
+  // 캐시에 있으면 그냥 갖다 붙이면 되는건데...이걸 또 어케 분기를...완전스파게티 제데로 볶았네
+  // ScrollItemType이 들어와야한다.
+  render(groupId, isScrollDown) {
+    const items = this.items[groupId];
+    const frag = items.reduce((acc, item) => {
+      acc.appendChild(item.el);
+      return acc;
+    }, document.createDocumentFragment());
+
+    if (isScrollDown) {
+      // 아래로 내려가는 중이라먄 이걸 아니라면
+      this.container.appendChild(frag);
+    } else {
+      // 아니라면
+      this.container.insertBefore(frag, this.container.children[0]);
+    }
+
+    // if(items[0].el.style.top === '-1px'){
+    this.updateElements(groupId, isScrollDown);
+    // }
+
+    this.updateContainer();
+    this.removeElements(isScrollDown);
+  }
+
+  // 보이지 않아도 되는 영역 제거
+  // 유지하는 범위는 this.wrapperBCR.height * this.rangeLevel
+  removeElements = isScrollDown => {
+    // firstGroup의 마지막 요소가(el)
+    console.log(isScrollDown);
+    const firstGroupLastItem = this.firstGroup[this.firstGroup.length - 1];
+    const lastGroupFirstItem = this.lastGroup[0];
+    const firstGroupId = this.getGroupId(firstGroupLastItem);
+    const lastGroupId = this.getGroupId(lastGroupFirstItem);
+
+    if (isScrollDown) {
+      if (
+        firstGroupLastItem.scrollTop <
+        lastGroupFirstItem.scrollTop - this.wrapperBCR.height * this.rangeLevel
+      ) {
+        this.firstGroup.forEach(item => {
+          this.container.removeChild(item.el);
+        });
+
+        this.firstGroup = this.items[firstGroupId + 1];
+      }
+    } else {
+      if (
+        firstGroupLastItem.scrollTop +
+          firstGroupLastItem.height +
+          this.wrapperBCR.height * this.rangeLevel <
+        lastGroupFirstItem.scrollTop
+      ) {
+        this.lastGroup.forEach(item => {
+          this.container.removeChild(item.el);
+        });
+        this.lastGroup = this.items[lastGroupId - 1];
+      }
+    }
+  };
+}
+
+export default Scroll;

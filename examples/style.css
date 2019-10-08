@@ -1,0 +1,17 @@
+html,
+body{
+    height: 100%;   
+}
+
+html,
+body,
+div,
+li,
+ul{
+    margin: 0;
+    padding: 0;
+}
+
+div:nth-child(2n){
+    height: 45px;
+}

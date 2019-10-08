@@ -1,1 +1,0 @@
-body,div,li,ul{margin:0;padding:0}#component{height:100vh;overflow:auto}#list-body{margin:0}.item{line-height:49px;width:calc(100% - 10px);padding-left:10px;border-bottom:1px solid #ddd}#loading{position:absolute;bottom:0;left:0;right:0;-webkit-transform:translateY(50px);transform:translateY(50px);line-height:50px;background-color:#eee;text-align:center}
