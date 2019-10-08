@@ -8,6 +8,7 @@ class Scroll {
       dummy.innerHTML = template(d);
       const el = dummy.childNodes[0];
       el.style.position = 'absolute';
+      el.style.top = '-1px';
       el.setAttribute('inert', '');
       el.setAttribute('groupId', groupId);
       return {el};
@@ -20,6 +21,7 @@ class Scroll {
     this.wrapperBCR = this.wrapper.getBoundingClientRect();
     this.template = template;
     this.loader = loader;
+    this.rangeLevel = 4;
 
     this.items = [];
     this.firstGroup = [];
@@ -86,9 +88,8 @@ class Scroll {
       // 스크롤이 정방향인 경우
       groupId = currentGroupId - 1;
       if (groupId < 1) groupId = 1;
-      lastScrollTop =
-        this.items[groupId][this.items[groupId].length - 1].scrollTop +
-        currentItems[0].el.offsetHeight;
+      const currentLastGroupLastItem = this.items[groupId][this.items[groupId].length - 1];
+      lastScrollTop = currentLastGroupLastItem.scrollTop + currentLastGroupLastItem.height;
 
       if (!lastScrollTop) lastScrollTop = 0;
       currentItems.forEach(item => {
@@ -203,13 +204,16 @@ class Scroll {
       this.container.insertBefore(frag, this.container.children[0]);
     }
 
+    // if(items[0].el.style.top === '-1px'){
     this.updateElements(groupId, isScrollDown);
+    // }
+
     this.updateContainer();
     this.removeElements(isScrollDown);
   }
 
   // 보이지 않아도 되는 영역 제거
-  // 유지하는 범위는 this.wrapperBCR.height * 3
+  // 유지하는 범위는 this.wrapperBCR.height * this.rangeLevel
   removeElements = isScrollDown => {
     // firstGroup의 마지막 요소가(el)
     console.log(isScrollDown);
@@ -221,7 +225,7 @@ class Scroll {
     if (isScrollDown) {
       if (
         firstGroupLastItem.scrollTop <
-        lastGroupFirstItem.scrollTop - this.wrapperBCR.height * 3
+        lastGroupFirstItem.scrollTop - this.wrapperBCR.height * this.rangeLevel
       ) {
         this.firstGroup.forEach(item => {
           this.container.removeChild(item.el);
@@ -231,7 +235,9 @@ class Scroll {
       }
     } else {
       if (
-        firstGroupLastItem.scrollTop + firstGroupLastItem.height + this.wrapperBCR.height * 3 <
+        firstGroupLastItem.scrollTop +
+          firstGroupLastItem.height +
+          this.wrapperBCR.height * this.rangeLevel <
         lastGroupFirstItem.scrollTop
       ) {
         this.lastGroup.forEach(item => {
