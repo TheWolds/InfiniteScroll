@@ -1,6 +1,5 @@
 class Scroll {
-  static DOWN = 'scroll/DOWN';
-  static UP = 'scroll/UP';
+  static initialGroupId = 1;
 
   static getItems = (template, data, groupId) => {
     return data.map(d => {
@@ -42,7 +41,7 @@ class Scroll {
   }
 
   init = () => {
-    this.setItems(1, true);
+    this.setItems(Scroll.initialGroupId, true);
     // this.scrollEvent(); 원래 이게 와야 함 그러므로 seItems의 default가 존재해야한다.
   };
 
@@ -118,8 +117,6 @@ class Scroll {
       this.firstGroup = this.items[currentGroupId];
       if (!this.lastGroup.length) this.lastGroup = this.items[groupId];
     }
-
-    console.log(this);
   };
 
   scrollEvent = () => {
@@ -216,7 +213,6 @@ class Scroll {
   // 유지하는 범위는 this.wrapperBCR.height * this.rangeLevel
   removeElements = isScrollDown => {
     // firstGroup의 마지막 요소가(el)
-    console.log(isScrollDown);
     const firstGroupLastItem = this.firstGroup[this.firstGroup.length - 1];
     const lastGroupFirstItem = this.lastGroup[0];
     const firstGroupId = this.getGroupId(firstGroupLastItem);

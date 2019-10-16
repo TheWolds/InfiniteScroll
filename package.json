@@ -1,6 +1,6 @@
 {
-  "name": "llorcs",
-  "version": "1.0.0",
+  "name": "scrollorcs",
+  "version": "0.0.1",
   "description": "This is an infinite scroll made for practice. You can use it, but it does not guarantee stability or performance",
   "main": "src/scroll.js",
   "private": true,

@@ -3,7 +3,7 @@
 ⚠️ This is an infinite scroll *made for practice*. You can use it, but *it does not guarantee stability or performance*.
 
 
-![dd](infi.gif)
+![dd](docs/infi.gif)
 
 [example](https://project42da.github.io/InfiniteScroll/)
 

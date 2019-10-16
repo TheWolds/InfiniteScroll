@@ -1,18 +1,32 @@
-// var promises = urls.map(url => fetch(url).then(y => y.text()));
-// Promise.all(promises).then(results => {
-//     // do something with results.
-// });
+const getQueryString = params =>
+  Object.keys(params)
+    .map(k => encodeURIComponent(k) + '=' + encodeURIComponent(params[k]))
+    .join('&');
+
 class DataLoader {
-  constructor(api) {
-    this.api = api;
-    this.query = 0;
+  constructor({url, params, callback}) {
+    this.url = url;
+    this.params = params;
+    this.callback = callback;
     this.caches = []; // 프로미스 저장
+
+    this.urlEndWithSlash();
   }
+
+  urlEndWithSlash = () => {
+    if (this.url[this.url.length - 1] !== '/') {
+      this.url += '/';
+    }
+  };
+
   // 프로미스 반환
-  fetchData = groupId => {
-    return fetch(`https://swapi.co/api/people/?page=${groupId}`)
+  fetchData = () => {
+    const url = `${this.url}?${getQueryString(this.params)}`;
+    return fetch(url)
       .then(res => {
         if (res.status === 200) {
+          // this.params 업그레이드.
+          this.params = this.callback(this.params);
           return res.json();
         } else {
           throw new Error('Error');
@@ -23,14 +37,12 @@ class DataLoader {
 
   supply = groupId => {
     if (!caches[groupId]) {
-      const result = this.fetchData(groupId);
+      const result = this.fetchData();
       caches[groupId] = result;
       return result;
     }
 
-    return new Promise(resolve => {
-      resolve(caches[groupId]);
-    });
+    return Promise.resolve(caches[groupId]);
   };
 }
 
