@@ -1,23 +1,12 @@
-const getQueryString = params =>
-  Object.keys(params)
-    .map(k => encodeURIComponent(k) + '=' + encodeURIComponent(params[k]))
-    .join('&');
+import {urlEndWithSlash, getQueryString} from './libs/url';
 
 class DataLoader {
   constructor({url, params, callback}) {
-    this.url = url;
+    this.url = urlEndWithSlash(url);
     this.params = params;
     this.callback = callback;
     this.caches = []; // 프로미스 저장
-
-    this.urlEndWithSlash();
   }
-
-  urlEndWithSlash = () => {
-    if (this.url[this.url.length - 1] !== '/') {
-      this.url += '/';
-    }
-  };
 
   // 프로미스 반환
   fetchData = () => {

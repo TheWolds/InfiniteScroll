@@ -69,15 +69,6 @@ class Scroll {
     // 지워야하는 컨텐츠 확인.
   };
 
-  isOverFlow = () => {
-    // 넘치지 않았다면 setItem이나 질러야하지.
-    //     domBCR = $0.getBoundingClientRect()
-    // DOMRect {x: 0, y: 0, width: 619, height: 306, top: 0, …}
-    // contBCR = ScrollInstance.container.getBoundingClientRect()
-    // DOMRect {x: 0, y: -226, width: 619, height: 361, top: -226, …}
-    // .container는 overflow-y=auto;랑 height 100%주던가 고정값이 있던가 해야함.
-  };
-
   // 이미렏더된 아이템의 위치를 조정함.
   updateElements = (currentGroupId, isScrollDown) => {
     let groupId, lastScrollTop;
