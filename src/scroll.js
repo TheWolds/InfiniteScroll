@@ -197,28 +197,19 @@ class Scroll {
     // }
 
     this.updateContainer();
-    this.removeElements(isScrollDown);
+    this.checkOffSet(isScrollDown);
   }
 
-  // 보이지 않아도 되는 영역 제거
-  // 유지하는 범위는 this.wrapperBCR.height * this.rangeLevel
-  removeElements = isScrollDown => {
-    // firstGroup의 마지막 요소가(el)
+  checkOffSet = isScrollDown => {
     const firstGroupLastItem = this.firstGroup[this.firstGroup.length - 1];
     const lastGroupFirstItem = this.lastGroup[0];
-    const firstGroupId = this.getGroupId(firstGroupLastItem);
-    const lastGroupId = this.getGroupId(lastGroupFirstItem);
 
     if (isScrollDown) {
       if (
         firstGroupLastItem.scrollTop <
         lastGroupFirstItem.scrollTop - this.wrapperBCR.height * this.rangeLevel
       ) {
-        this.firstGroup.forEach(item => {
-          this.container.removeChild(item.el);
-        });
-
-        this.firstGroup = this.items[firstGroupId + 1];
+        this.removeElements('firstGroup', this.getGroupId(firstGroupLastItem) + 1);
       }
     } else {
       if (
@@ -227,12 +218,24 @@ class Scroll {
           this.wrapperBCR.height * this.rangeLevel <
         lastGroupFirstItem.scrollTop
       ) {
-        this.lastGroup.forEach(item => {
-          this.container.removeChild(item.el);
-        });
-        this.lastGroup = this.items[lastGroupId - 1];
+        this.removeElements('lastGroup', this.getGroupId(lastGroupFirstItem) - 1);
       }
     }
+  };
+
+  // 아래로 내려간다면, 윗방향 오프셋을 확인하고, 첫번째 그룹을 삭제한다.
+  // 위로 올라간다면, 아래방향 오프셋을 확인하고, 마지막 그룹을 삭제한다.
+  // scrollEvent ---> scrollPosition --> removeElements
+
+  // 보이지 않아도 되는 영역 제거
+  // 유지하는 범위는 this.wrapperBCR.height * this.rangeLevel
+  removeElements = (groupKey, id) => {
+    // firstGroup의 마지막 요소가(el)
+    this[groupKey].forEach(item => {
+      this.container.removeChild(item.el);
+    });
+
+    this[groupKey] = this.items[id];
   };
 }
 
