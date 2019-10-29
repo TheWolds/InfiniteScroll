@@ -43,6 +43,7 @@ class Scroll {
   init = () => {
     this.setItems(Scroll.initialGroupId, true);
     // this.scrollEvent(); 원래 이게 와야 함 그러므로 seItems의 default가 존재해야한다.
+    // while(!this.isOverflow()) {} 루프돌려서 this.isOverflow의 반환값이 true일때까지 setItem을 반복시켜야함.
   };
 
   isScrollDown = () => {
@@ -96,7 +97,6 @@ class Scroll {
       // 0을 업데이트 해야한다면 1을 기준으로
       groupId = currentGroupId + 1;
       lastScrollTop = this.items[groupId][0].scrollTop;
-
       // 반대순서로.
       for (let i = currentItems.length - 1; i >= 0; i--) {
         currentItems[i].height = currentItems[i].el.offsetHeight;
@@ -113,18 +113,14 @@ class Scroll {
   scrollEvent = () => {
     const isScrollDown = this.isScrollDown();
     if (isScrollDown) {
-      // 아래방향
       // 현재 스크롤 위치가 라스트트리거가 보이는 위치라면
       const lastGroupItem = this.lastGroup[0];
       const lastGroupId = this.getGroupId(lastGroupItem);
       if (this.wrapper.scrollTop > lastGroupItem.scrollTop) {
         // append합니다.
-        // console.log(lastGroupItem);
         this.setItems(lastGroupId + 1, isScrollDown);
       }
-      // 끝나면 첫,마지막 아이템 갱신 this.update()
     } else {
-      // 위쪽방향
       // 현재 스크롤 위치가 첫번째 트리거가 보이는 위치라면
       const firstGroupItem = this.firstGroup[this.firstGroup.length - 1]; // 마지막 자식
       const firstGroupId = this.getGroupId(firstGroupItem);
@@ -132,45 +128,27 @@ class Scroll {
         // preppend 합니다.
         this.setItems(firstGroupId - 1, isScrollDown);
       }
-      // 끝나면 첫,마지막 아이템 갱신 this.update();
     }
   };
 
-  // TODO 리팩토링
-  // on egjs의 on같은게 필요해 내가 fetchData해줬던거처럼.
   setItems(groupId = 1, isScrollDown = true) {
-    if (this.items.length === 0) {
-      // console.log('길이가 0인경우');
-      this.loader.supply(groupId).then(data => {
-        let items = Scroll.getItems(this.template, data, groupId);
-        this.items[groupId] = items; // groupId로 id저장
-        items = null;
-        requestAnimationFrame(() => {
-          this.render(groupId, isScrollDown);
-        });
+    if (this.items[groupId]) {
+      requestAnimationFrame(() => {
+        this.render(groupId, isScrollDown);
       });
     } else {
-      if (this.items[groupId]) {
-        // console.log('아이템이 있는경우', groupId);
-        requestAnimationFrame(() => {
-          this.render(groupId, isScrollDown);
-        });
-      } else {
-        // console.log('아이템이 없는경우', groupId);
-        if (!this.pending) {
-          this.pending = true;
-          this.loader.supply(groupId).then(data => {
-            // 매번 다음거를 리턴해야할것인데, generator를 써야할듯.(로더가 캐시도 가지고 있어야할듯)
-            let items = Scroll.getItems(this.template, data, groupId);
-            this.items[groupId] = items;
-            items = null;
+      if (!this.pending) {
+        this.pending = true;
+        this.loader.supply(groupId).then(data => {
+          let items = Scroll.getItems(this.template, data, groupId);
+          this.items[groupId] = items;
+          items = null;
 
-            requestAnimationFrame(() => {
-              this.render(groupId, isScrollDown);
-              this.pending = false;
-            });
+          requestAnimationFrame(() => {
+            this.render(groupId, isScrollDown);
+            this.pending = false;
           });
-        }
+        });
       }
     }
   }
@@ -191,11 +169,9 @@ class Scroll {
       // 아니라면
       this.container.insertBefore(frag, this.container.children[0]);
     }
-
     // if(items[0].el.style.top === '-1px'){
     this.updateElements(groupId, isScrollDown);
     // }
-
     this.updateContainer();
     this.checkOffSet(isScrollDown);
   }
